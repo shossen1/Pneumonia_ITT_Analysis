@@ -1,0 +1,21 @@
+---
+title: "**Intention-to-Treat analysis for stunting in 1-year old children**"
+subtitle: "**Version 1.6**"
+date: March 24, 2022
+header-includes:
+  - \usepackage{float}
+output:
+  pdf_document: 
+    highlight: zenburn
+    latex_engine: xelatex
+    toc: yes
+    keep_tex: yes
+  extra_dependencies: ["float"]
+  html_document: default
+  word_document: default
+editor_options: 
+  chunk_output_type: inline
+  markdown: 
+    wrap: 72
+---
+
