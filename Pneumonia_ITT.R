@@ -10,7 +10,7 @@ library(lubridate)
 
 ### Load datasets
 getwd()
-dlist <- list.files("/Users/shakir777/Dropbox/HAPIN/Pneumonia_ITT/Data/20220428/")
+dlist <- list.files("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/20220428/")
 
 for(i in dlist){
   ii <- tolower(str_remove(i, "_20220428.csv"))
@@ -19,13 +19,48 @@ for(i in dlist){
   ii <- str_replace(ii, "peru", "per")
   ii <- str_replace(ii, "rwanda", "rwa")
 
-  assign(ii, read.csv(paste0("/Users/shakir777/Dropbox/HAPIN/Pneumonia_ITT/Data/20220428/", i)))
+  assign(ii, read.csv(paste0("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/20220428/", i)))
 }
 
 ### Functions to check missmatched variables across datasets
 fun.varmissmatch <- function(a, b){
   print(names(a)[!(names(a) %in% names(b))])
   print(names(b)[!(names(b) %in% names(a))])
+}
+
+# data = df.c36
+# var1 = "c36_oxy_60"
+# var2 = "c36_oxy_90"
+# var3 = "c36_oxy_120"
+# datevar = "c36_date"
+# prefix = "c36"
+
+# Function to create hypoxia variable
+fun.saturation <- function(data, datevar, prefix, var1, var2, var3){
+  message(paste0("Range of ", var1, ":")); print(range(data[[var1]], na.rm = TRUE))
+  message(paste0("Range of ", var2, ":")); print(range(data[[var2]], na.rm = TRUE))
+  message(paste0("Range of ", var3, ":")); print(range(data[[var3]], na.rm = TRUE))
+  
+  # Subset of data with saturation variables
+  ds <- data[,c("HHID", "irc", datevar, var1, var2, var3)]
+  # Number of available reading
+  ds$n <- 3 - rowSums(is.na(ds))
+  # Sum of all the readings
+  ds$sum <- rowSums(ds[,c(var1, var2, var3)], na.rm = TRUE)
+  # Average of the readings
+  ds[[paste0(prefix, "_oxym")]] <- round(as.numeric(ds$sum / ds$n))
+  # Converting NaN into missing
+  ds[[paste0(prefix, "_oxym")]] <- ifelse(ds[[paste0(prefix, "_oxym")]] == "NaN", NA, ds[[paste0(prefix, "_oxym")]])  
+  
+  # Merging the newly created value with the original data
+  data <- left_join(data, ds[,c("HHID", datevar, paste0(prefix, "_oxym"))], by = c("HHID", datevar))
+  
+  # Hypoxia based on saturation
+  data[[paste0(prefix, "_hypox")]] <- ifelse(data$irc == "Peru" & data[[paste0(prefix, "_oxym")]] <= 86, 1,
+                                             ifelse(data$irc %in% c("Guatemala", "India", "Rwanda") &
+                                                      data[[paste0(prefix, "_oxym")]] <= 92, 1,
+                                                    ifelse(is.na(data[[paste0(prefix, "_oxym")]]), NA, 0)))
+  return(data)
 }
 
 ###################################
@@ -207,95 +242,68 @@ fun.recoding <- function(data){
 return(data)
 }
 df.c40 <- fun.recoding(df.c40)
-df.c40 <- df.c40 %>% dplyr::filter(!is.na(c40_date_arrive)) # Dropping 1 row with missing date
 
-data = df.c40
-var1 = "c40_oxy"
-var2 = "c40_oxy_2"
-var3 = "c40_oxy_3"
-datevar = "c40_date_arrive"
-prefix = "c40"
+dtt <- df.c40 %>% dplyr::filter(HHID %in% c(33006, 33018, 35125, 33366, 33414, 51036))
 
-fun.saturation <- function(data, datevar, prefix){
-  # Subset of data with saturation variables
-  ds <- data[,c("HHID", "irc",
-                datevar, paste0(prefix, "_oxy"), paste0(prefix, "_oxy_2"), paste0(prefix, "_oxy_3"))]
-  # Number of available reading
-  ds$n <- 3 - rowSums(is.na(ds))
-  # Sum of all the readings
-  ds$sum <- rowSums(ds[,c(paste0(prefix, "_oxy"), paste0(prefix, "_oxy_2"), paste0(prefix, "_oxy_3"))], na.rm = TRUE)
-  # Average of the readings
-  ds[[paste0(prefix, "_oxym")]] <- round(as.numeric(ds$sum / ds$n))
-  # Converting NaN into missing
-  ds[[paste0(prefix, "_oxym")]] <- ifelse(ds[[paste0(prefix, "_oxym")]] == "NaN", NA, ds[[paste0(prefix, "_oxym")]])  
-  
-  # Merging the newly created value with the original data
-  data <- left_join(data, ds[,c("HHID", datevar, paste0(prefix, "_oxym"))], by = c("HHID", datevar))
-  
-  # Hypoxia based on saturation
-  data[[paste0(prefix, "_hypox")]] <- ifelse(data$irc == "Peru" & data[[paste0(prefix, "_oxym")]] <= 86, 1,
-                                               ifelse(data$irc != "Peru" & data[[paste0(prefix, "_oxym")]] <= 92, 1,
-                                                      ifelse(is.na(data[[paste0(prefix, "_oxym")]]), NA, 0)))
-  
-  # subset of data with advanced respiratory support 
-  drs <- data %>%
-    dplyr::select(HHID, eval(parse(text = datevar)), contains("_oxygen"), contains("_receive"))
-return(data)
-}
-df.c40 <- fun.saturation(df.c40, "c40_date_arrive", "c40")
+df.c40 <- df.c40 %>% 
+  dplyr::filter(!is.na(c40_date_arrive)) %>% # Dropping 1 row with missing date
+  dplyr::arrange(HHID, c40_date_arrive) %>%
+  dplyr::distinct(HHID, c40_date_arrive, .keep_all = TRUE)
 
+# # Subset of data with saturation variables
+# ds <- df.c40[,c("HHID", "irc", "c40_date_arrive", "c40_oxy", "c40_oxy_2", "c40_oxy_3")]
+# ds$n <- 3 - rowSums(is.na(ds)) # Number of available reading
+# ds$sum <- rowSums(ds[,c("c40_oxy", "c40_oxy_2", "c40_oxy_3")], na.rm = TRUE) # Sum of all the readings
+# ds$c40_oxym <- round(as.numeric(ds$sum / ds$n)) # Average of the readings
+# ds$c40_oxym <- ifelse(ds$c40_oxym == "NaN", NA, ds$c40_oxym) # Converting NaN into missing
+# 
+# # Merging the newly created value with the original data
+# df.c40 <- left_join(df.c40, ds[,c("HHID", "c40_date_arrive", "c40_oxym")], by = c("HHID", "c40_date_arrive"))
+# # Hypoxia based on saturation
+# df.c40$c40_hypox <- ifelse(df.c40$irc == "Peru" & df.c40$c40_oxym <= 86, 1,
+#                                                ifelse(df.c40$irc != "Peru" & df.c40$c40_oxym <= 92, 1,
+#                                                       ifelse(is.na(df.c40$c40_oxym), NA, 0)))
+# 
+
+df.c40 <- fun.saturation(df.c40, "c40_date_arrive", "c40", "c40_oxy", "c40_oxy_2", "c40_oxy_3")
 table(df.c40$c40_hypox)
 
+# subset of data with advanced respiratory support 
+drc <- df.c40 %>%
+  dplyr::select(HHID, c40_date_arrive, contains("_oxygen"), contains("_receive")) %>%
+  dplyr::filter_all(any_vars(. %in% c("CPAP or BiPAP (non-invasive ventilation)",
+                                      'Ventilator (intubated invasive ventilation)',
+                                      'Mask/ventilator',
+                                      'High flow nasal cannula oxygen'))) %>% 
+  dplyr::mutate(c40_adcare = 1)
+
+df.c40 <- left_join(df.c40, drc[,c("HHID", "c40_date_arrive", "c40_adcare")], by = c("HHID", "c40_date_arrive"))
+df.c40$c40_adcare <- replace(df.c40$c40_adcare, is.na(df.c40$c40_adcare), 0)
+
+###############
+###   C41   ###
+###############
+drc2 <- df.c41 %>%
+  dplyr::select(HHID, c41_date_admit, c41_oxygen_positive, c41_oxygen_2_positive, c41_oxygen_mechanical,
+                c41_oxygen_2_mechanical) %>%
+  dplyr::filter_all(any_vars(. %in% c("Checked"))) %>% 
+  dplyr::mutate(c41_adcare = 1)
+
+df.c41 <- left_join(df.c41, drc2[,c("HHID", "c41_date_admit", "c41_adcare")], by = c("HHID", "c41_date_admit"))
+df.c41$c41_adcare <- replace(df.c41$c41_adcare, is.na(df.c41$c41_adcare), 0)
+
+table(df.c40$c40_adcare, df.c40$c40_hypox)
+table(df.c41$c41_adcare)
 
 
-# intubation and mechanical ventilation, 
-# non-invasive ventilation with continuous positive airway pressure support (CPAP), 
-# non-invasive ventilation with bi-level positive airway pressure support (BIPAP), 
-# or high-flow nasal cannula oxygen.”
-
-# Advanced respiratory care:  (note:  cough and/or difficult breathing are assumed to be “yes”)
-# •	C40_oxygen == 2 or
-# 1, Nasal Cannula oxygen | 2, Mask/ventilator | 0, No supplemental oxygen or mask/ventilator | 888, Not documented
-# •	C40_oxygen_2 == 2 | 3 | 4 or 
-# 1, Nasal Cannula (low flow) | 2, Ventilator (intubated invasive ventilation) | 3, High flow nasal cannula oxygen | 4, CPAP or BiPAP (non-invasive ventilation) | 0, No supplemental oxygen or mask/ventilator | 888, Not documented
-# •	C40_receive == 2 or
-# 1, Nasal Cannula oxygen | 2, Mask/ventilator | 0, No supplemental oxygen or mask/ventilator | 888, Not documented
-# •	C40_receive_new1 == 2 | 3 | 4 or
-# 1, Nasal Cannula (low flow) | 2, Ventilator (intubated invasive ventilation) | 3, High flow nasal cannula oxygen | 4, CPAP or BiPAP (non-invasive ventilation) | 0, No supplemental oxygen or mask/ventilator | 888, Not documented
-# •	C40_receive_2 == 2 or
-# 1, Nasal Cannula oxygen | 2, Mask/ventilator | 0, No supplemental oxygen or mask/ventilator | 888, Not documented
-# •	C40_receive_new2 == 2 | 3 | 4 or
-# 1, Nasal Cannula (low flow) | 2, Ventilator (intubated invasive ventilation) | 3, High flow nasal cannula oxygen | 4, CPAP or BiPAP (non-invasive ventilation) | 0, No supplemental oxygen or mask/ventilator | 888, Not documented
-# •	C40_receive_3 == 2 or
-# 1, Nasal Cannula oxygen | 2, Mask/ventilator | 0, No supplemental oxygen or mask/ventilator | 888, Not documented
-# •	C40_receive_new3 == 2 | 3 | 4 or
-# 1, Nasal Cannula (low flow) | 2, Ventilator (intubated invasive ventilation) | 3, High flow nasal cannula oxygen | 4, CPAP or BiPAP (non-invasive ventilation) | 0, No supplemental oxygen or mask/ventilator | 888, Not documented
 
 
-
-# Shakir, can you look at these variables by ID and tab how many are "positive" by these variables.
 # For those that are positive by oxygen saturation on C40, we can see if there is a paired c36/c36a.  
 # If there is, then merge.  If not, then doesn't matter.
-
-# Same process for the advanced respiratory care variables.  
-# Except that if a child is on advanced respiratory care then "cough and/or difficult breathing" 
-# is assumed (so a c36 is not required)
-# In a nutshell that is C40.
-
-# For c41 it is even simpler in that we only care about the advanced respiratory care variables on that form.
-# action point:  Shakir, can you look at these variables by ID and tab how many are "positive" by these variables
 # For those that are positive, look for a paired c36 (which may already be paired with a c40), and merge.
 # The question of how much "time" is permitted between a c36/c36a and a c40 or c41 is somewhat unresolved,
-# So I would suggest that we use that window of 48 hours between these forms.
-# 
-#  
-# -if encounter (c36/c36a/c40/c41) then other encounter (c36/c36a/c40/c41) can link if within 1 week
-# (<7 days) and be considered the same “visit”
-# 
-# -c36 date variable: c36_date
-# -c36a date variable: c36a_h_date
-# -c40 date variable: c40_date_arrive
-# -c41 date variable: c41_date_admit
+ 
+
 
 
 # ind_c34a blank
@@ -306,6 +314,11 @@ table(df.c40$c40_hypox)
 # C36a negative: 23482
 
 # 23287 c40 date arrive missing
+# Mask/ventilator ?
+# Repeat C40 form on same day: 33006 33018 35125 33366 33414 51036
+# Keeping first/last inpur of duplicated form on same day?
+# •	Oxygen saturation: should not be included if obtained while
+# the child was receiving oxygen or advanced respiratory support: Any oxygen?
 
 
 
