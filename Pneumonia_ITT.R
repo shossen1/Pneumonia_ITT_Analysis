@@ -267,6 +267,22 @@ df.c40 <- df.c40 %>%
 ### Hypoxia variable generation
 df.c40 <- fun.saturation(df.c40, "c40_date_arrive", "c40", "c40_oxy", "c40_oxy_2", "c40_oxy_3")
 
+df.c40_h <- df.c40 %>%
+  dplyr::filter(c40_hypox == 1) %>%
+  dplyr::select(HHID, c40_date_arrive) %>%
+  left_join(df.c36[,c("HHID", "c36_date")], by = "HHID") %>%
+  dplyr::mutate(timediff = difftime(c40_date_arrive, c36_date, units = "days")) %>%
+  dplyr::filter(!is.na(timediff) & timediff >= (-2) & timediff <=2) %>%
+  dplyr::arrange(HHID, timediff) %>%
+  dplyr::mutate(hypoxx = 1) %>%
+  dplyr::select(HHID, c40_date_arrive, hypoxx)
+
+df.c40 <- left_join(df.c40, df.c40_h, by = c("HHID", "c40_date_arrive"))
+df.c40$c40_hypox <- ifelse(df.c40$hypoxx == 1, 1, 0)
+df.c40$c40_hypox <- replace(df.c40$c40_hypox, is.na(df.c40$c40_hypox), 0)
+df.c40$hypoxx <- NULL
+table(df.c40$c40_hypox)
+
 # advanced respiratory support care variable generation
 drc <- df.c40 %>%
   dplyr::select(HHID, c40_date_arrive, contains("_oxygen"), contains("_receive")) %>%
@@ -346,6 +362,13 @@ df.c36$danger <- ifelse(df.c36$c36_drink == "Yes" |
 
 table(df.c36$danger)
 
+df.c36$c36_malnutrition <- ifelse(df.c36$c36_malnutrition == "Yes (complete E1-Adverse Event form)", "Yes",
+                                  df.c36$c36_malnutrition)
+table(df.c36$c36_malnutrition)
+
+df.c36$malnutri <- ifelse(df.c36$c36_malnutrition == "Yes")
+
+
 
 # c36_malnutrition (0 no, 1 yes) or
 # c36_wt (total weight) minus c36_cloth_wt (cloth weight) if c36_cloth == 2 (with clothes/blanket) 
@@ -403,22 +426,22 @@ df.c36a$danger <- ifelse(df.c36a$c36a_drink == "Yes" |
 
 table(df.c36a$danger)
 
+# nutrition variable
+# 6 ids
+# checking 48 hours window
 
-# For the 6 iDs with multiple c40s from the same day. Others should weigh in also but
+
 # I guess I would keep if positive? Drop if not? And if multiple are positive for one 
 # patient and all on same day keep the first form that is positive?
+
 # So I think what I would suggest is then merging these positive c40 and c41 
 # forms with a c36 that is within 2 days of it? Can be in either direction 
 # (c40 or c41 can be earlier or later than the c36 by 2 days).
+
 # Technically, if the c40 or c41 is positive by an advanced resp care variable these don’t 
 # have to merge with a c36 as the cough and difficulty breathing are assumed.
 # But if hypoxemic on c40 we would need it to merge with a c36 or c36a within that 2 days
 
-
-# For those that are positive by oxygen saturation on C40, we can see if there is a paired c36/c36a.  
-# If there is, then merge.  If not, then doesn't matter.
-# For those that are positive, look for a paired c36 (which may already be paired with a c40), and merge.
-# The question of how much "time" is permitted between a c36/c36a and a c40 or c41 is somewhat unresolved,
 
 # ind_c34a blank
 # No gua_c34a only gua_c34a_repeated
