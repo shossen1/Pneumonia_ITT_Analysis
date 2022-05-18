@@ -28,12 +28,12 @@ fun.varmissmatch <- function(a, b){
   print(names(b)[!(names(b) %in% names(a))])
 }
 
-# data = df.c36
-# var1 = "c36_oxy_60"
-# var2 = "c36_oxy_90"
-# var3 = "c36_oxy_120"
-# datevar = "c36_date"
-# prefix = "c36"
+# data = df.c36a
+# var1 = "c36a_oxy_60"
+# var2 = "c36a_oxy_90"
+# var3 = "c36a_oxy_120"
+# datevar = "c36a_h_date"
+# prefix = "c36a"
 
 # Function to create hypoxia variable
 fun.saturation <- function(data, datevar, prefix, var1, var2, var3){
@@ -242,7 +242,6 @@ fun.recoding <- function(data){
 return(data)
 }
 df.c40 <- fun.recoding(df.c40)
-
 dtt <- df.c40 %>% dplyr::filter(HHID %in% c(33006, 33018, 35125, 33366, 33414, 51036))
 
 df.c40 <- df.c40 %>% 
@@ -265,10 +264,10 @@ df.c40 <- df.c40 %>%
 #                                                       ifelse(is.na(df.c40$c40_oxym), NA, 0)))
 # 
 
+### Hypoxia variable generation
 df.c40 <- fun.saturation(df.c40, "c40_date_arrive", "c40", "c40_oxy", "c40_oxy_2", "c40_oxy_3")
-table(df.c40$c40_hypox)
 
-# subset of data with advanced respiratory support 
+# advanced respiratory support care variable generation
 drc <- df.c40 %>%
   dplyr::select(HHID, c40_date_arrive, contains("_oxygen"), contains("_receive")) %>%
   dplyr::filter_all(any_vars(. %in% c("CPAP or BiPAP (non-invasive ventilation)",
@@ -277,41 +276,155 @@ drc <- df.c40 %>%
                                       'High flow nasal cannula oxygen'))) %>% 
   dplyr::mutate(c40_adcare = 1)
 
+# Merging with original dataset
 df.c40 <- left_join(df.c40, drc[,c("HHID", "c40_date_arrive", "c40_adcare")], by = c("HHID", "c40_date_arrive"))
 df.c40$c40_adcare <- replace(df.c40$c40_adcare, is.na(df.c40$c40_adcare), 0)
 
 ###############
 ###   C41   ###
 ###############
+# advanced respiratory support care variable generation
 drc2 <- df.c41 %>%
   dplyr::select(HHID, c41_date_admit, c41_oxygen_positive, c41_oxygen_2_positive, c41_oxygen_mechanical,
                 c41_oxygen_2_mechanical) %>%
   dplyr::filter_all(any_vars(. %in% c("Checked"))) %>% 
   dplyr::mutate(c41_adcare = 1)
 
+# Merging with original dataset
 df.c41 <- left_join(df.c41, drc2[,c("HHID", "c41_date_admit", "c41_adcare")], by = c("HHID", "c41_date_admit"))
 df.c41$c41_adcare <- replace(df.c41$c41_adcare, is.na(df.c41$c41_adcare), 0)
 
-table(df.c40$c40_adcare, df.c40$c40_hypox)
-table(df.c41$c41_adcare)
+###############
+###   C36   ###
+###############
+# advanced respiratory support care variable generation
+df.c36 <- fun.saturation(df.c36, "c36_date", "c36", "c36_oxy_60", "c36_oxy_90", "c36_oxy_120")
+
+# Average respiratory rate
+df.c36$c36_rr <- round(apply(df.c36[,c("c36_rr1", "c36_rr2")], 1, mean, na.rm = TRUE))
+df.c36$c36_rr <- ifelse(df.c36$c36_rr == "NaN", NA, df.c36$c36_rr)
+
+# Fast-breathing
+df.c36$c36_fastbreath <- ifelse(df.c36[["c36_age"]] <2 & df.c36$c36_rr >60, "Yes",
+                          ifelse(df.c36[["c36_age"]] >= 2 & df.c36[["c36_age"]] <= 12 & df.c36$c36_rr >50, "Yes", "No"))
+
+for(ii in c("c36_diff_breath", "c36_fastbreath", "c36_nodding", "c36_flaring", "c36_grunt", "c36_wheez",
+            "c36_stridor", "c36_tugging", "c36_indraw", "c36_s_indraw", "c36_retraction")){
+  print(ii)
+  print(table(df.c36[[ii]]))
+}
+
+# Dyspnea
+df.c36$c36_dyspnea <- ifelse(df.c36$c36_diff_breath == "Yes" |
+                               df.c36$c36_fastbreath == "Yes" |
+                               df.c36$c36_nodding == "Yes" |
+                               df.c36$c36_flaring == "Yes" |
+                               df.c36$c36_grunt == "Yes" |
+                               df.c36$c36_wheez == "Yes" |
+                               df.c36$c36_stridor == "Yes" |
+                               df.c36$c36_tugging == "Yes" |
+                               df.c36$c36_indraw == "Yes" |
+                               df.c36$c36_s_indraw == "Yes" |
+                               df.c36$c36_retraction == "Yes", 1, 0)
+
+table(df.c36$c36_dyspnea)
+
+for(ii in c("c36_drink", "c36_vomit", "c36_convulsion", "c36_unconscious", "c36_feed", "c36_move")){
+ print(ii)
+ print(table(df.c36[[ii]]))
+}
+
+df.c36$c36_feed <- ifelse(df.c36$c36_feed == "Yes, the child is not able to feed well", "Yes",
+                          ifelse(df.c36$c36_feed == "No, the child is feeding well", "No", NA))
+
+df.c36$danger <- ifelse(df.c36$c36_drink == "Yes" |
+                          df.c36$c36_vomit == "Yes" |
+                          df.c36$c36_convulsion == "Yes" |
+                          df.c36$c36_unconscious == "Yes" |
+                          (df.c36$c36_feed == "Yes" & df.c36$c36_age < 2) |
+                          (df.c36$c36_move == "Yes" & df.c36$c36_age < 2), 1, 0)
+
+table(df.c36$danger)
 
 
+# c36_malnutrition (0 no, 1 yes) or
+# c36_wt (total weight) minus c36_cloth_wt (cloth weight) if c36_cloth == 2 (with clothes/blanket) 
+
+
+################
+###   C36a   ###
+################
+df.c36a <- fun.saturation(df.c36a, "c36a_h_date", "c36a", "c36a_oxy_60", "c36a_oxy_90", "c36a_oxy_120")
+
+# Average respiratory rate
+df.c36a$c36a_rr <- round(apply(df.c36a[,c("c36a_rr1", "c36a_rr2")], 1, mean, na.rm = TRUE))
+df.c36a$c36a_rr <- ifelse(df.c36a$c36a_rr == "NaN", NA, df.c36a$c36a_rr)
+
+# Fast-breathing
+df.c36a$c36a_fastbreath <- ifelse(df.c36a[["c36a_age"]] <2 & df.c36a$c36a_rr >60, "Yes",
+                                  ifelse(df.c36a[["c36a_age"]] >= 2 & df.c36a[["c36a_age"]] <= 12 & df.c36a$c36a_rr >50, "Yes", "No"))
+
+for(ii in c("c36a_diff_breath", "c36a_fastbreath", "c36a_nodding", "c36a_flaring", "c36a_grunt", "c36a_wheez",
+            "c36a_stridor", "c36a_tugging", "c36a_indraw", "c36a_s_indraw", "c36a_retraction")){
+  print(ii)
+  print(table(df.c36a[[ii]]))
+}
+
+# Dyspnea
+df.c36a$c36a_dyspnea <- ifelse(df.c36a$c36a_diff_breath == "Yes" |
+                                 df.c36a$c36a_fastbreath == "Yes" |
+                                 df.c36a$c36a_nodding == "Yes" |
+                                 df.c36a$c36a_flaring == "Yes" |
+                                 df.c36a$c36a_grunt == "Yes" |
+                                 df.c36a$c36a_wheez == "Yes" |
+                                 df.c36a$c36a_stridor == "Yes" |
+                                 df.c36a$c36a_tugging == "Yes" |
+                                 df.c36a$c36a_indraw == "Yes" |
+                                 df.c36a$c36a_s_indraw == "Yes" |
+                                 df.c36a$c36a_retraction == "Yes", 1, 0)
+
+table(df.c36a$c36a_dyspnea)
+
+
+for(ii in c("c36a_drink", "c36a_vomit", "c36a_convulsion", "c36a_unconscious", "c36a_feed", "c36a_move")){
+  print(ii)
+  print(table(df.c36a[[ii]]))
+}
+
+df.c36a$c36a_feed <- ifelse(df.c36a$c36a_feed == "Yes, the child is not able to feed well", "Yes",
+                            ifelse(df.c36a$c36a_feed == "No, the child is feeding well", "No", NA))
+
+df.c36a$danger <- ifelse(df.c36a$c36a_drink == "Yes" |
+                           df.c36a$c36a_vomit == "Yes" |
+                           df.c36a$c36a_convulsion == "Yes" |
+                           df.c36a$c36a_unconscious == "Yes" |
+                           (df.c36a$c36a_feed == "Yes" & df.c36a$c36a_age < 2) |
+                           (df.c36a$c36a_move == "Yes" & df.c36a$c36a_age < 2), 1, 0)
+
+table(df.c36a$danger)
+
+
+# For the 6 iDs with multiple c40s from the same day. Others should weigh in also but
+# I guess I would keep if positive? Drop if not? And if multiple are positive for one 
+# patient and all on same day keep the first form that is positive?
+# So I think what I would suggest is then merging these positive c40 and c41 
+# forms with a c36 that is within 2 days of it? Can be in either direction 
+# (c40 or c41 can be earlier or later than the c36 by 2 days).
+# Technically, if the c40 or c41 is positive by an advanced resp care variable these don’t 
+# have to merge with a c36 as the cough and difficulty breathing are assumed.
+# But if hypoxemic on c40 we would need it to merge with a c36 or c36a within that 2 days
 
 
 # For those that are positive by oxygen saturation on C40, we can see if there is a paired c36/c36a.  
 # If there is, then merge.  If not, then doesn't matter.
 # For those that are positive, look for a paired c36 (which may already be paired with a c40), and merge.
 # The question of how much "time" is permitted between a c36/c36a and a c40 or c41 is somewhat unresolved,
- 
-
-
 
 # ind_c34a blank
 # No gua_c34a only gua_c34a_repeated
 # How to deal repeated?
 # For Rwanda: E3, E3_child, E3_OAW
 # c40 negative: 13135
-# C36a negative: 23482
 
 # 23287 c40 date arrive missing
 # Mask/ventilator ?
