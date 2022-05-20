@@ -247,33 +247,20 @@ dtt <- df.c40 %>% dplyr::filter(HHID %in% c(33006, 33018, 35125, 33366, 33414, 5
 df.c40 <- df.c40 %>% 
   dplyr::filter(!is.na(c40_date_arrive)) %>% # Dropping 1 row with missing date
   dplyr::arrange(HHID, c40_date_arrive) %>%
-  dplyr::distinct(HHID, c40_date_arrive, .keep_all = TRUE)
-
-# # Subset of data with saturation variables
-# ds <- df.c40[,c("HHID", "irc", "c40_date_arrive", "c40_oxy", "c40_oxy_2", "c40_oxy_3")]
-# ds$n <- 3 - rowSums(is.na(ds)) # Number of available reading
-# ds$sum <- rowSums(ds[,c("c40_oxy", "c40_oxy_2", "c40_oxy_3")], na.rm = TRUE) # Sum of all the readings
-# ds$c40_oxym <- round(as.numeric(ds$sum / ds$n)) # Average of the readings
-# ds$c40_oxym <- ifelse(ds$c40_oxym == "NaN", NA, ds$c40_oxym) # Converting NaN into missing
-# 
-# # Merging the newly created value with the original data
-# df.c40 <- left_join(df.c40, ds[,c("HHID", "c40_date_arrive", "c40_oxym")], by = c("HHID", "c40_date_arrive"))
-# # Hypoxia based on saturation
-# df.c40$c40_hypox <- ifelse(df.c40$irc == "Peru" & df.c40$c40_oxym <= 86, 1,
-#                                                ifelse(df.c40$irc != "Peru" & df.c40$c40_oxym <= 92, 1,
-#                                                       ifelse(is.na(df.c40$c40_oxym), NA, 0)))
-# 
+  dplyr::distinct(HHID, c40_date_arrive, .keep_all = TRUE) # Keeping the first one of the duplicated IDs but have to check which one is the case
 
 ### Hypoxia variable generation
 df.c40 <- fun.saturation(df.c40, "c40_date_arrive", "c40", "c40_oxy", "c40_oxy_2", "c40_oxy_3")
 
+### List of 
 df.c40_h <- df.c40 %>%
   dplyr::filter(c40_hypox == 1) %>%
   dplyr::select(HHID, c40_date_arrive) %>%
   left_join(df.c36[,c("HHID", "c36_date")], by = "HHID") %>%
   dplyr::mutate(timediff = difftime(c40_date_arrive, c36_date, units = "days")) %>%
-  dplyr::filter(!is.na(timediff) & timediff >= (-2) & timediff <=2) %>%
+  dplyr::filter(!is.na(timediff) & timediff >= (-2) & timediff <=2) %>% # Keeping the earliest one but have to check which oen is case
   dplyr::arrange(HHID, timediff) %>%
+  dplyr::distinct(HHID, .keep_all = TRUE) %>%
   dplyr::mutate(hypoxx = 1) %>%
   dplyr::select(HHID, c40_date_arrive, hypoxx)
 
@@ -428,7 +415,11 @@ table(df.c36a$danger)
 
 # nutrition variable
 # 6 ids
-# checking 48 hours window
+# from 13 keep if positive
+# wt_chart if missing
+# ht_chart if missing
+# bifth date
+# heart rate
 
 
 # I guess I would keep if positive? Drop if not? And if multiple are positive for one 
