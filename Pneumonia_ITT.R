@@ -12,21 +12,28 @@ library(lubridate)
 getwd()
 dlist <- list.files("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/20220428/")
 
-for(i in dlist){
-  ii <- tolower(str_remove(i, "_20220428.csv"))
-  ii <- str_replace(ii, "guatemala", "gua")  
-  ii <- str_replace(ii, "india", "ind")
-  ii <- str_replace(ii, "peru", "per")
-  ii <- str_replace(ii, "rwanda", "rwa")
+df.c40 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c40_20220428_unfmt.csv")
+df.c41 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c41_20220428_unfmt.csv")
+df.nf <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_ITT_nf_20220428_unfmt.csv")
+df.lus <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_LUS_20220428_unfmt.csv")
 
-  assign(ii, read.csv(paste0("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/20220428/", i)))
-}
 
-### Functions to check missmatched variables across datasets
-fun.varmissmatch <- function(a, b){
-  print(names(a)[!(names(a) %in% names(b))])
-  print(names(b)[!(names(b) %in% names(a))])
-}
+
+# for(i in dlist){
+#   ii <- tolower(str_remove(i, "_20220428.csv"))
+#   ii <- str_replace(ii, "guatemala", "gua")  
+#   ii <- str_replace(ii, "india", "ind")
+#   ii <- str_replace(ii, "peru", "per")
+#   ii <- str_replace(ii, "rwanda", "rwa")
+# 
+#   assign(ii, read.csv(paste0("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/20220428/", i)))
+# }
+# 
+# ### Functions to check missmatched variables across datasets
+# fun.varmissmatch <- function(a, b){
+#   print(names(a)[!(names(a) %in% names(b))])
+#   print(names(b)[!(names(b) %in% names(a))])
+# }
 
 # data = df.c36a
 # var1 = "c36a_oxy_60"
@@ -63,88 +70,88 @@ fun.saturation <- function(data, datevar, prefix, var1, var2, var3){
   return(data)
 }
 
-###################################
-###   Merge repeated datasets   ###
-###################################
-### Merging gua_c36a with gua_c36a_repeated
-# Rename variable HHID
-gua_c36a_repeated <- gua_c36a_repeated %>%
-  dplyr::rename(HHID = hhid)
-
-# list of variables which are not present in the both of the datasets
-dd <- c(colnames(gua_c36a)[!(colnames(gua_c36a) %in% colnames(gua_c36a_repeated))],
-        colnames(gua_c36a_repeated)[!(colnames(gua_c36a_repeated) %in% colnames(gua_c36a))])
-
-# Appending the datasets without the variables which are not present in both of the datasets
-gua_c36a <- rbind(gua_c36a[, !(names(gua_c36a) %in% dd)],
-                  gua_c36a_repeated[, !(names(gua_c36a_repeated) %in% dd)])
-
-### Merging gua_c40 with gua_c40_repeated
-# list of variables which are not present in the both of the datasets
-dd <- c(colnames(gua_c40)[!(colnames(gua_c40) %in% colnames(gua_c40_repeated))],
-        colnames(gua_c40_repeated)[!(colnames(gua_c40_repeated) %in% colnames(gua_c40))])
-
-gua_c40 <- rbind(gua_c40[, !(names(gua_c40) %in% dd)],
-                 gua_c40_repeated[, !(names(gua_c40_repeated) %in% dd)])
-
-### Merging gua_c41 with gua_c41_repeated
-# list of variables which are not present in the both of the datasets
-dd <- c(colnames(gua_c41)[!(colnames(gua_c41) %in% colnames(gua_c41_repeated))],
-        colnames(gua_c41_repeated)[!(colnames(gua_c41_repeated) %in% colnames(gua_c41))])
-
-gua_c41 <- rbind(gua_c41[, !(names(gua_c41) %in% dd)],
-                 gua_c41_repeated[, !(names(gua_c41_repeated) %in% dd)])
-
-#####################################
-###   Dataset merge for all IRC   ###
-#####################################
-fun.combine <- function(a, b, c, d){
-  message("Guatemala"); print(dim(a))
-  message("India"); print(dim(b))
-  message("Peru"); print(dim(d))
-  message("Rwanda"); print(dim(d))
-  
-  dd <- c(names(a), names(b), names(c), names(d))
-  dd <- data.frame(dd)
-  dd <- dd %>%
-    dplyr::arrange(dd) %>%
-    dplyr::group_by(dd) %>%
-    dplyr::mutate(n = 1:n())
-  
-  dd <- dd %>% dplyr::filter(n == 4)
-  
-a <- a[,dd$dd]
-b <- b[,dd$dd]
-c <- c[,dd$dd]
-d <- d[,dd$dd]
-a$irc <- "Guatemala"
-b$irc <- "India"
-c$irc <- "Peru"
-d$irc <- "Rwanda"
-
-abcd <- rbind(a, b, c, d)
-message(paste0("Combined dataset rows ", dim(abcd)[1]))
-message(paste0("Combined dataset columns ", dim(abcd)[2]))
-return(abcd)
-}
-
-### Keep the variables which are common in all 4 IRC
-df.c30 <- fun.combine(gua_c30, ind_c30, per_c30, rwa_c30)
-df.c31 <- fun.combine(gua_c31, ind_c31, per_c31, rwa_c31)
-df.c32 <- fun.combine(gua_c32, ind_c32, per_c32, rwa_c32)
-df.c33 <- fun.combine(gua_c33, ind_c33, per_c33, rwa_c33)
-#df.c34a <- fun.combine(gua_c34a_repeated, ind_c34a, per_c34a, rwa_c34a)
-df.c36 <- fun.combine(gua_c36, ind_c36, per_c36, rwa_c36)
-df.c36a <- fun.combine(gua_c36a, ind_c36a, per_c36a, rwa_c36a)
-df.c37 <- fun.combine(gua_c37, ind_c37, per_c37, rwa_c37)
-df.c40 <- fun.combine(gua_c40, ind_c40, per_c40, rwa_c40)
-df.c41 <- fun.combine(gua_c41, ind_c41, per_c41, rwa_c41)
-df.c42 <- fun.combine(gua_c42, ind_c42, per_c42, rwa_c42)
-df.c81 <- fun.combine(gua_c81, ind_c81, per_c81, rwa_c81)
-df.c82 <- fun.combine(gua_c82, ind_c82, per_c82, rwa_c82)
-df.e2 <- fun.combine(gua_e2, ind_e2, per_e2, rwa_e2)
-df.e3_child <- fun.combine(gua_e3_child, ind_e3_child, per_e3_child, rwa_e3_child)
-df.m11 <- fun.combine(gua_m11, ind_m11, per_m11, rwa_m11)
+# ###################################
+# ###   Merge repeated datasets   ###
+# ###################################
+# ### Merging gua_c36a with gua_c36a_repeated
+# # Rename variable HHID
+# gua_c36a_repeated <- gua_c36a_repeated %>%
+#   dplyr::rename(HHID = hhid)
+# 
+# # list of variables which are not present in the both of the datasets
+# dd <- c(colnames(gua_c36a)[!(colnames(gua_c36a) %in% colnames(gua_c36a_repeated))],
+#         colnames(gua_c36a_repeated)[!(colnames(gua_c36a_repeated) %in% colnames(gua_c36a))])
+# 
+# # Appending the datasets without the variables which are not present in both of the datasets
+# gua_c36a <- rbind(gua_c36a[, !(names(gua_c36a) %in% dd)],
+#                   gua_c36a_repeated[, !(names(gua_c36a_repeated) %in% dd)])
+# 
+# ### Merging gua_c40 with gua_c40_repeated
+# # list of variables which are not present in the both of the datasets
+# dd <- c(colnames(gua_c40)[!(colnames(gua_c40) %in% colnames(gua_c40_repeated))],
+#         colnames(gua_c40_repeated)[!(colnames(gua_c40_repeated) %in% colnames(gua_c40))])
+# 
+# gua_c40 <- rbind(gua_c40[, !(names(gua_c40) %in% dd)],
+#                  gua_c40_repeated[, !(names(gua_c40_repeated) %in% dd)])
+# 
+# ### Merging gua_c41 with gua_c41_repeated
+# # list of variables which are not present in the both of the datasets
+# dd <- c(colnames(gua_c41)[!(colnames(gua_c41) %in% colnames(gua_c41_repeated))],
+#         colnames(gua_c41_repeated)[!(colnames(gua_c41_repeated) %in% colnames(gua_c41))])
+# 
+# gua_c41 <- rbind(gua_c41[, !(names(gua_c41) %in% dd)],
+#                  gua_c41_repeated[, !(names(gua_c41_repeated) %in% dd)])
+# 
+# #####################################
+# ###   Dataset merge for all IRC   ###
+# #####################################
+# fun.combine <- function(a, b, c, d){
+#   message("Guatemala"); print(dim(a))
+#   message("India"); print(dim(b))
+#   message("Peru"); print(dim(d))
+#   message("Rwanda"); print(dim(d))
+#   
+#   dd <- c(names(a), names(b), names(c), names(d))
+#   dd <- data.frame(dd)
+#   dd <- dd %>%
+#     dplyr::arrange(dd) %>%
+#     dplyr::group_by(dd) %>%
+#     dplyr::mutate(n = 1:n())
+#   
+#   dd <- dd %>% dplyr::filter(n == 4)
+#   
+# a <- a[,dd$dd]
+# b <- b[,dd$dd]
+# c <- c[,dd$dd]
+# d <- d[,dd$dd]
+# a$irc <- "Guatemala"
+# b$irc <- "India"
+# c$irc <- "Peru"
+# d$irc <- "Rwanda"
+# 
+# abcd <- rbind(a, b, c, d)
+# message(paste0("Combined dataset rows ", dim(abcd)[1]))
+# message(paste0("Combined dataset columns ", dim(abcd)[2]))
+# return(abcd)
+# }
+# 
+# ### Keep the variables which are common in all 4 IRC
+# df.c30 <- fun.combine(gua_c30, ind_c30, per_c30, rwa_c30)
+# df.c31 <- fun.combine(gua_c31, ind_c31, per_c31, rwa_c31)
+# df.c32 <- fun.combine(gua_c32, ind_c32, per_c32, rwa_c32)
+# df.c33 <- fun.combine(gua_c33, ind_c33, per_c33, rwa_c33)
+# #df.c34a <- fun.combine(gua_c34a_repeated, ind_c34a, per_c34a, rwa_c34a)
+# df.c36 <- fun.combine(gua_c36, ind_c36, per_c36, rwa_c36)
+# df.c36a <- fun.combine(gua_c36a, ind_c36a, per_c36a, rwa_c36a)
+# df.c37 <- fun.combine(gua_c37, ind_c37, per_c37, rwa_c37)
+# df.c40 <- fun.combine(gua_c40, ind_c40, per_c40, rwa_c40)
+# df.c41 <- fun.combine(gua_c41, ind_c41, per_c41, rwa_c41)
+# df.c42 <- fun.combine(gua_c42, ind_c42, per_c42, rwa_c42)
+# df.c81 <- fun.combine(gua_c81, ind_c81, per_c81, rwa_c81)
+# df.c82 <- fun.combine(gua_c82, ind_c82, per_c82, rwa_c82)
+# df.e2 <- fun.combine(gua_e2, ind_e2, per_e2, rwa_e2)
+# df.e3_child <- fun.combine(gua_e3_child, ind_e3_child, per_e3_child, rwa_e3_child)
+# df.m11 <- fun.combine(gua_m11, ind_m11, per_m11, rwa_m11)
 
 ###################
 ###   Heatmap   ###
@@ -420,24 +427,7 @@ table(df.c36a$danger)
 # ht_chart if missing
 # bifth date
 # heart rate
-
-
-# I guess I would keep if positive? Drop if not? And if multiple are positive for one 
-# patient and all on same day keep the first form that is positive?
-
-# So I think what I would suggest is then merging these positive c40 and c41 
-# forms with a c36 that is within 2 days of it? Can be in either direction 
-# (c40 or c41 can be earlier or later than the c36 by 2 days).
-
-# Technically, if the c40 or c41 is positive by an advanced resp care variable these don’t 
-# have to merge with a c36 as the cough and difficulty breathing are assumed.
-# But if hypoxemic on c40 we would need it to merge with a c36 or c36a within that 2 days
-
-
-# ind_c34a blank
-# No gua_c34a only gua_c34a_repeated
-# How to deal repeated?
-# For Rwanda: E3, E3_child, E3_OAW
+# drop one year + 
 # c40 negative: 13135
 
 # 23287 c40 date arrive missing
@@ -446,6 +436,22 @@ table(df.c36a$danger)
 # Keeping first/last inpur of duplicated form on same day?
 # •	Oxygen saturation: should not be included if obtained while
 # the child was receiving oxygen or advanced respiratory support: Any oxygen?
+
+
+
+# I guess I would keep if positive? Drop if not? And if multiple are positive for one 
+# patient and all on same day keep the first form that is positive?
+# So I think what I would suggest is then merging these positive c40 and c41 
+# forms with a c36 that is within 2 days of it? Can be in either direction 
+# (c40 or c41 can be earlier or later than the c36 by 2 days).
+# Technically, if the c40 or c41 is positive by an advanced resp care variable these don’t 
+# have to merge with a c36 as the cough and difficulty breathing are assumed.
+# But if hypoxemic on c40 we would need it to merge with a c36 or c36a within that 2 days
+
+
+
+
+
 
 
 
