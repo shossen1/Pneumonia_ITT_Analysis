@@ -12,12 +12,12 @@ library(lubridate)
 getwd()
 dlist <- list.files("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/20220428/")
 
+list.files("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/")
+
 df.c40 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c40_20220428_unfmt.csv")
 df.c41 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c41_20220428_unfmt.csv")
 df.nf <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_ITT_nf_20220428_unfmt.csv")
 df.lus <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_LUS_20220428_unfmt.csv")
-
-
 
 # for(i in dlist){
 #   ii <- tolower(str_remove(i, "_20220428.csv"))
@@ -225,17 +225,17 @@ for(v in colnames(df)){df[[v]] <- ifelse(df[[v]] == "", NA, df[[v]])}
 df$group <- factor(df$group,
                    levels = c("a", "b", "c", "d", "ac", "bd", "cd", "acd", "bcd"))
 
-### Heatmap
-# ggplot(data = df) +
-#   geom_tile(aes(x = day, y = factor(hhid), fill = factor(irc)), alpha = 0.3) +
-#   geom_text(aes(x = day, y = factor(hhid), label = factor(group))) +
-#   scale_x_continuous("Age (days)",
-#                      breaks = seq(0, 365, 14)) +
-#   theme_bw() +
-#   theme(axis.text.y = element_blank(),
-#         legend.title = element_blank(),
-#         axis.title.y = element_blank(),
-#         axis.ticks.y = element_blank())
+## Heatmap
+ggplot(data = df) +
+  geom_tile(aes(x = day, y = factor(hhid), fill = factor(irc)), alpha = 0.3) +
+  geom_text(aes(x = day, y = factor(hhid), label = factor(group))) +
+  scale_x_continuous("Age (days)",
+                     breaks = seq(0, 365, 14)) +
+  theme_bw() +
+  theme(axis.text.y = element_blank(),
+        legend.title = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank())
 
 ###############
 ###   C40   ###
@@ -425,7 +425,7 @@ table(df.c36a$danger)
 # from 13 keep if positive
 # wt_chart if missing
 # ht_chart if missing
-# bifth date
+# birth date
 # heart rate
 # drop one year + 
 # c40 negative: 13135
