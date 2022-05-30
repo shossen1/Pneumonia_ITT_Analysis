@@ -19,3 +19,11 @@ editor_options:
     wrap: 72
 ---
 
+```{r, include=FALSE}
+df.tab <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab.csv")
+
+dim(df.tab)
+
+table1x(df.tab, c("factor(irc)"), "factor(trt_scrambled)")
+
+```
