@@ -31,7 +31,7 @@ df.cxr <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneu
 # prefix = "c36a"
 
 # Function to create hypoxia variable
-fun.saturation <- function(data, datevar, prefix, var1, var2, var3){
+fun.average <- function(data, datevar, prefix, var1, var2, var3, newname, hypox){
   message(paste0("Range of ", var1, ":")); print(range(data[[var1]], na.rm = TRUE))
   message(paste0("Range of ", var2, ":")); print(range(data[[var2]], na.rm = TRUE))
   message(paste0("Range of ", var3, ":")); print(range(data[[var3]], na.rm = TRUE))
@@ -43,19 +43,30 @@ fun.saturation <- function(data, datevar, prefix, var1, var2, var3){
   # Sum of all the readings
   ds$sum <- rowSums(ds[,c(var1, var2, var3)], na.rm = TRUE)
   # Average of the readings
-  ds[[paste0(prefix, "_oxym")]] <- round(as.numeric(ds$sum / ds$n))
+  ds[[newname]] <- round(as.numeric(ds$sum / ds$n))
   # Converting NaN into missing
-  ds[[paste0(prefix, "_oxym")]] <- ifelse(ds[[paste0(prefix, "_oxym")]] == "NaN", NA, ds[[paste0(prefix, "_oxym")]])  
+  ds[[newname]] <- ifelse(ds[[newname]] == "NaN", NA, ds[[newname]])  
   
   # Merging the newly created value with the original data
-  data <- left_join(data, ds[,c("hhid_blinded", datevar, paste0(prefix, "_oxym"))], by = c("hhid_blinded", datevar))
+  data <- left_join(data, ds[,c("hhid_blinded", datevar, newname)], by = c("hhid_blinded", datevar))
   
+if(hypox == 1){  
   # Hypoxia based on saturation
-  data[[paste0(prefix, "_hypox")]] <- ifelse(data$irc == "Peru" & data[[paste0(prefix, "_oxym")]] <= 86, 1,
+  data[[paste0(prefix, "_hypox")]] <- ifelse(data$irc == "Peru" & data[[newname]] <= 86, 1,
                                              ifelse(data$irc %in% c("Guatemala", "India", "Rwanda") &
-                                                      data[[paste0(prefix, "_oxym")]] <= 92, 1,
-                                                    ifelse(is.na(data[[paste0(prefix, "_oxym")]]), NA, 0)))
+                                                      data[[newname]] <= 92, 1,
+                                                    ifelse(is.na(data[[newname]]), NA, 0)))
   return(data)
+}
+  if(hypox != 1){
+    return(data)
+  }
+}
+
+fun.combine <- function(var){
+  newvar <- ifelse(dl$form == "c36", dl[[paste0("c36_",var)]], 
+                   ifelse(dl$form == "c36a", dl[[paste0("c36a_",var)]], NA))
+  return(newvar)
 }
 
 ###############
@@ -82,7 +93,7 @@ df.c40 <- df.c40 %>%
   dplyr::distinct(hhid_blinded, c40_date_arrive, .keep_all = TRUE) # Keeping the first one of the duplicated IDs but have to check which one is the case
 
 ### Hypoxia variable generation
-df.c40 <- fun.saturation(df.c40, "c40_date_arrive", "c40", "c40_oxy", "c40_oxy_2", "c40_oxy_3")
+df.c40 <- fun.average(df.c40, "c40_date_arrive", "c40", "c40_oxy", "c40_oxy_2", "c40_oxy_3", "c40_oxym", hypox = 1)
 
 ### List of 
 df.c40_h <- df.c40 %>%
@@ -113,6 +124,11 @@ df.c40 <- left_join(df.c40, drc[,c("hhid_blinded", "c40_date_arrive", "c40_adcar
 df.c40$c40_adcare <- replace(df.c40$c40_adcare, is.na(df.c40$c40_adcare), 0)
 table(df.c40$c40_adcare)
 
+df.c40$c40_temp <- ifelse(df.c40$c40_temp > 50, 
+                          (df.c40$c40_temp - 32)*(5/9), df.c40$c40_temp)
+
+table(df.c40$c40_temp)
+
 ###############
 ###   C41   ###
 ###############
@@ -136,7 +152,8 @@ df.c36 <- df.nf %>%
   dplyr::filter(!is.na(c36_date) & c36_date != "")
 
 # advanced respiratory support care variable generation
-df.c36 <- fun.saturation(df.c36, "c36_date", "c36", "c36_oxy_60_R", "c36_oxy_90_R", "c36_oxy_120_R")
+df.c36 <- fun.average(df.c36, "c36_date", "c36", "c36_oxy_60_R", "c36_oxy_90_R", "c36_oxy_120_R", "c36_oxym", hypox = 1)
+df.c36$c36_oxym <- ifelse(df.c36$c36_oxy_supplem == 1, NA, df.c36$c36_oxym)
 
 # Average respiratory rate
 df.c36$c36_rr <- round(apply(df.c36[,c("c36_rr1", "c36_rr2")], 1, mean, na.rm = TRUE))
@@ -182,10 +199,26 @@ df.c36$c36_danger <- ifelse(df.c36$c36_drink == 1 |
 table(df.c36$c36_danger)
 table(df.c36$c36_malnutrition)
 
+df.c36$c36_wt <- ifelse(df.c36$c36_cloth == 2, df.c36$c36_cloth_wt - df.c36$c36_wt, df.c36$c36_wt)
+df.c36$c36_wt <- ifelse(df.c36$c36_wt < 0, NA,
+                        ifelse(df.c36$c36_wt > 25 & df.c36$c36_wt <=100, df.c36$c36_wt/10,
+                               ifelse(df.c36$c36_wt > 100 & df.c36$c36_wt <=1000, df.c36$c36_wt/100,
+                                      ifelse(df.c36$c36_wt > 1000, df.c36$c36_wt/1000, df.c36$c36_wt )))) 
+
+table(df.c36$c36_wt)
+
+df.c36$c36_temp <- ifelse(df.c36$c36_temp > 50, 
+                          (df.c36$c36_temp - 32)*(5/9), df.c36$c36_temp)
+
+table(df.c36$c36_temp)
+
+
 ################
 ###   C36a   ###
 ################
-df.c36a <- fun.saturation(df.c36a, "c36a_h_date", "c36a", "c36a_oxy_60_R", "c36a_oxy_90_R", "c36a_oxy_120_R")
+df.c36a <- fun.average(df.c36a, "c36a_h_date", "c36a", "c36a_oxy_60_R", "c36a_oxy_90_R", "c36a_oxy_120_R", "c36a_oxym", hypox =1)
+df.c36a$c36a_oxym <- ifelse(df.c36a$c36a_oxy_supplem == 1, NA, df.c36a$c36a_oxym)
+
 table(df.c36a$c36a_hypox)
 
 # Average respiratory rate
@@ -234,6 +267,24 @@ df.c36a$c36a_danger <- ifelse(df.c36a$c36a_drink == 1 |
                            (df.c36a$c36a_move == 1 & df.c36a$c36a_age < 2), 1, 0)
 
 table(df.c36a$c36a_danger)
+
+df.c36a$c36a_wt <- ifelse(df.c36a$c36a_cloth == 2, df.c36a$c36a_cloth_wt - df.c36a$c36a_wt, df.c36a$c36a_wt)
+df.c36a$c36a_wt <- ifelse(df.c36a$c36a_wt < 0, NA,
+                          ifelse(df.c36a$c36a_wt > 25 & df.c36a$c36a_wt <=100, df.c36a$c36a_wt/10,
+                                 ifelse(df.c36a$c36a_wt > 100 & df.c36a$c36a_wt <=1000, df.c36a$c36a_wt/100,
+                                        ifelse(df.c36a$c36a_wt > 1000, df.c36a$c36a_wt/1000, df.c36a$c36a_wt )))) 
+
+table(df.c36a$c36a_wt)
+
+df.c36a$c36a_temp <- ifelse(df.c36a$c36a_temp > 50, 
+                            (df.c36a$c36a_temp - 32)*(5/9), df.c36a$c36a_temp)
+
+table(df.c36a$c36a_temp)
+
+
+df.c36a <- fun.average(df.c36a, "c36a_h_date", "c36a", "c36a_pulse_60_R", "c36a_pulse_90_R",
+                          "c36a_pulse_120_R", "c36a_hr", hypox = 0)
+
 
 #########################
 ###   Checking date   ###
@@ -360,25 +411,52 @@ df.va <- df.va %>%
 ##########################
 df.c36_v <- df.c36 %>%
   dplyr::select(hhid_blinded, c36_date, c36_cough, c36_oxym, c36_hypox,
-                c36_rr, c36_fastbreath, c36_dyspnea, c36_danger, c36_malnutrition) %>%
+                c36_rr, c36_fastbreath, c36_dyspnea, c36_danger, c36_malnutrition, c36_wt,
+                c36_temp, c36_wheez, c36_indraw,
+                c36_nodding,
+                c36_nodding,
+                c36_flaring,
+                c36_grunt,
+                c36_stridor,
+                c36_tugging,
+                c36_retraction,
+                c36_drink,
+                c36_vomit,
+                c36_convulsion,
+                c36_unconscious) %>%
   dplyr::arrange(hhid_blinded, c36_date) %>%
-  dplyr::rename(date = c36_date) %>%
+  dplyr::rename(date = c36_date,
+                wt = c36_wt) %>%
   dplyr::mutate(form = "c36")
 
 df.c36a_v <- df.c36a %>%
   dplyr::select(hhid_blinded, c36a_h_date, c36a_cough, c36a_oxym, c36a_hypox,
-                c36a_rr, c36a_fastbreath, c36a_dyspnea, c36a_danger, c36a_malnutrition) %>%
+                c36a_rr, c36a_fastbreath, c36a_dyspnea, c36a_danger, c36a_malnutrition, c36a_wt,
+                c36a_temp, c36a_hr, c36a_wheez, c36a_wheez_2, c36a_indraw,
+                c36a_nodding,
+                c36a_nodding,
+                c36a_flaring,
+                c36a_grunt,
+                c36a_stridor,
+                c36a_tugging,
+                c36a_retraction,
+                c36a_drink,
+                c36a_vomit,
+                c36a_convulsion,
+                c36a_unconscious) %>%
   dplyr::arrange(hhid_blinded, c36a_h_date) %>%
-  dplyr::rename(date = c36a_h_date) %>%
+  dplyr::rename(date = c36a_h_date,
+                wt = c36a_wt) %>%
   dplyr::mutate(form = "c36a")
 
-dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid_blinded", "date", "form")) %>%
+dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid_blinded", "date", "form", "wt")) %>%
   dplyr::arrange(hhid_blinded, date) %>%
   dplyr::group_by(hhid_blinded) %>%
   dplyr::mutate(visit = 1:n()) %>% 
   dplyr::mutate(pre2 = as.Date(date) - 2,
                 post2 = as.Date(date) + 2) %>%
-  fuzzy_left_join(df.c40[,c("hhid_blinded", "c40_date_arrive", "c40_hypox", "c40_adcare")],
+  fuzzy_left_join(df.c40[,c("hhid_blinded", "c40_date_arrive", "c40_hypox", "c40_adcare", "c40_temp", 
+                            "c40_oxym")],
                   by = c(
     "hhid_blinded" = "hhid_blinded",
     "pre2" = "c40_date_arrive",
@@ -459,6 +537,43 @@ dl$pneumonia <- replace(dl$pneumonia,
 dl$pneumonia <- replace(dl$pneumonia, dl$pcvaCoD == 1, 1)
 table(dl$pneumonia)
 
+
+dl$malnutrition <- fun.combine("malnutrition")
+dl$rr <- fun.combine("rr")
+dl$spo2 <- fun.combine("oxym")
+dl$spo2 <- ifelse(is.na(dl$spo2), dl$c40_oxym, dl$spo2)
+
+dl$hypox <- fun.combine("hypox")
+dl$hypox <- ifelse(dl$c40_oxym <= 86, 1, dl$hypox )
+
+dl$wheez <- ifelse(dl$c36_wheez == 1 | dl$c36a_wheez == 1 |dl$c36a_wheez_2 == 1, 1, 0)
+dl$wheez <- replace(dl$wheez, is.na(dl$wheez), 0)
+
+dl$fever <- ifelse(dl$c36_temp > 38 |dl$c36a_temp > 38 | dl$c40_temp > 38, 1, 0)
+dl$fever <- replace(dl$fever, is.na(dl$fever), 0)
+
+for(vv in c("danger",
+            "indraw",
+            "nodding",
+            "flaring",
+            "grunt",
+            "stridor",
+            "tugging",
+            "retraction",
+            "drink",
+            "vomit",
+            "convulsion",
+            "unconscious")){
+  dl[[vv]] <- fun.combine(vv)
+}
+
+dcheck <- dl %>% 
+  dplyr::select(hhid_blinded, form, c36_malnutrition, c36a_malnutrition, malnutrition)
+
+
+
+
+
 write.csv(dl, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_05-30-2022.csv")
 
 df.tab <- df.nf %>%
@@ -468,9 +583,79 @@ df.tab$fies_cat = ifelse(df.tab$fies_cat == 0, 3,
                          ifelse(df.tab$fies_cat == 1, 2,
                                 ifelse(df.tab$fies_cat >= 2, 1, NA)))
 
+df.tab$tenstrata = ifelse(df.tab$s6_site == "", 1,
+                      ifelse(df.tab$s6_site == "Azangaro", 2,
+                             ifelse(df.tab$s6_site == "Chucuito/Juli", 3,
+                                    ifelse(df.tab$s6_site == "El Collao", 4,
+                                           ifelse(df.tab$s6_site == "Huancane", 5,
+                                                  ifelse(df.tab$s6_site == "JALAPA", 6,
+                                                         ifelse(df.tab$s6_site == "Nagapattinam", 7,
+                                                                ifelse(df.tab$s6_site == "Puno", 8,
+                                                                       ifelse(df.tab$s6_site == "San Roman", 9,
+                                                                              ifelse(df.tab$s6_site == "Villupuram", 10, NA))))))))))
+
+df.nff <- df.nf %>% 
+  dplyr::select(hhid_blinded, c30_dob) %>% 
+  dplyr::filter(c30_dob != "") %>% 
+  dplyr::distinct() %>% 
+  dplyr::rename(c30_dob2 = c30_dob)
+
+df.nf <- left_join(df.nf, df.nff, by = "hhid_blinded")
+df.nf$c33_age <- difftime(as.Date(df.nf$c33_date), as.Date(df.nf$c30_dob2), units = "days")
+
+#################################
+###   EBF variable creation   ###
+#################################
+dfy <- df.nf %>%
+  dplyr::filter(c33_age <= 180) %>% # Subset the data for 6m of age without considering the visit number
+  dplyr::arrange(desc(c33_age)) %>% # arrange from older to younger
+  dplyr::select(hhid_blinded, c33_age, timepoint, contains("c32_")) %>%
+  dplyr::distinct(hhid_blinded, .keep_all = TRUE) # Keep last visit within 6m
+
+# Recode 888 to NA
+for(u in colnames(dfy)){dfy[[u]] <- ifelse(dfy[[u]] == 888, NA, dfy[[u]])}
+
+foodlist = c("c32_vitamin", "c32_water", "c32_formula", "c32_milk", "c32_juice", "c32_broth", "c32_yogurt",
+             "c32_porridge", "c32_soda", "c32_liquid_other", "c32_grain", "c32_yellow", "c32_root",
+             "c32_leaves", "c32_mango", "c32_fruit", "c32_organ", "c32_meat", "c32_egg", "c32_seafood",
+             "c32_bean", "c32_cheese", "c32_oil","c32_sugar", "c32_insect", "c32_palm", "c32_food_other",
+             "c32_food", "c32_infant_food", "c32_add", "c32_nutrient", "c32_iron")
+
+# Rowwise maximum value (it would be 1 if any of the food/liquid is 1)
+dfy$maxfood <- apply(dfy[ ,foodlist], 1, max, na.rm=TRUE)
+
+# Recode -Inf to NA
+dfy$maxfood <- ifelse(dfy$maxfood == "-Inf", NA, dfy$maxfood)
+
+# Create EBF variable
+dfy$ebf <- ifelse(dfy$c32_breastfed2 == 1 & dfy$maxfood != 1, 1,
+                  ifelse(dfy$c32_breastfed2 != 1 | dfy$maxfood == 1, 0, NA))
+
+df.tab <- dfy %>%
+  dplyr::select(hhid_blinded, ebf) %>%
+  dplyr::right_join(df.tab, by = "hhid_blinded")
+
+
+
 write.csv(df.tab, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab.csv")
 
 
+df.tab3 <- dl %>%
+  dplyr::filter(pneumonia == 1) %>%
+  left_join(df.tab[,c("hhid_blinded", "tenstrata", "trt_scrambled", "c30_dob",
+                      "c30_sex")], by = "hhid_blinded") %>%
+  dplyr::mutate(age = difftime(as.Date(date), as.Date(c30_dob), units = "days"))
+
+df.tab3$agecat <- ifelse(df.tab3$age <60, "<2m",
+                         ifelse(df.tab3$age >= 60 & df.tab3$age <180, "2-6m",
+                                ifelse(df.tab3>180 & df.tab3$age <366, "6-12", NA)))
+
+write.csv(df.tab3, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
+
+write.csv(df.c36, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c36.csv")
+write.csv(df.c36a, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c36a.csv")
+write.csv(df.c40, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c40.csv")
+write.csv(df.c41, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c41.csv")
 
 
 

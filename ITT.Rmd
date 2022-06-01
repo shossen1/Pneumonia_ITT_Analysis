@@ -20,10 +20,170 @@ editor_options:
 ---
 
 ```{r, include=FALSE}
+library(doit4me)
+library(tidyverse)
+library(dplyr)
+library(broom)
+library(janitor)
+library(knitr)
+library(kableExtra)
+
 df.tab <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab.csv")
+df.tab3 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
+```
 
-dim(df.tab)
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+tab1 <- table1x(df.tab, c("factor(tenstrata)",
+                          "GAweeks_AT_INTERVENTION",
+                          "factor(c30_sex)",
+                          "m13_child",
+                          "factor(h42_smoke)",
+                          "factor(fies_cat)"), "factor(trt_scrambled)")
 
-table1x(df.tab, c("factor(irc)"), "factor(trt_scrambled)")
+tab1 <- tab1[,c(1,2)]
+tab1$order <- c(1:nrow(tab1))
+
+tab1 <- rowinsert(locations = c(1, 12, 19),
+                  rownm = c("International Research Center and randomization stratification",
+                            "Child sex",
+                            "Household food insecurity score"),
+                  tab = tab1)
+
+#rownames(tab1)[which(rownames(tab1) == "factor(c30_sex) (NA)")] <- "factor(c30_sex) (undetermined)"
+
+tab1 <- tab1[str_detect(rownames(tab1), "\\b(0)\\b") == "FALSE" &
+               str_detect(rownames(tab1), "\\b(NA)\\b") == "FALSE",]
+
+rownames(tab1) <- c("International Research Center and randomization stratification",
+                    paste0("Strata ", c(1:10)),
+                    "Gestational age (weeks) at intervention",
+                    "Child sex", "Male", "Female", "Number of siblings in the house", 
+                    "Second-hand smoking", "Household food insecurity score",
+                    "Mild", "Moderate", "Sereve")
+
+tab1$order <- NULL
+tab1 <- tab1 %>% 
+  kable(caption = "Baseline characteristics to be reported of liveborn children") %>% 
+    kableExtra::kable_classic_2(latex_options = "HOLD_position") %>%
+  add_indent(c(2:11,14,15,19:21), level_of_indent = 1)
+
+tab1
 
 ```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+tab2 <- table1x(df.tab, c("MAyears_at_baseline",
+                          "factor(m10_educ_R)",
+                          "GAweeks_AT_baseline",
+                          "WeightZScore",
+                          "factor(ebf)"),
+                "factor(trt_scrambled)")
+
+tab2 <- tab2[,c(1,2)]
+tab2$order <- c(1:nrow(tab2))
+
+tab2 <- rowinsert(locations = c(1,2,7,10),
+                  rownm = c("Maternal variables",
+                            "Mother’s highest level of education completed",
+                            "Child variables",
+                            "Up-to-date vaccination status"),
+                  tab = tab2)
+
+tab2 <- tab2[str_detect(rownames(tab2), "\\b(0)\\b") == "FALSE" &
+               str_detect(rownames(tab2), "\\b(NA)\\b") == "FALSE",]
+
+rownames(tab2) <- c("Maternal variables",
+                    "Mother’s age (years)",
+                    "Mother’s highest level of education completed",
+                    "No formal education or some primary school (1 or 2)",
+                    "Primary school or some secondary school incomplete (3 or 4)",
+                    "Secondary school or vocational or university/college (5 or 6 or 7)",
+                    "Gestational age (weeks)",
+                    "Child variables",
+                    "Birth weight-for-age z score",
+                    "Exclusive breastfeeding",
+                    "Up-to-date vaccination status")
+
+tab2$order <- NULL
+tab2 <- tab2 %>%
+  kable(caption = "Other key characteristics of study population of liveborn children") %>%
+  kableExtra::kable_classic_2(latex_options = "HOLD_position") %>%
+  add_indent(c(2,3,7,9:11), level_of_indent = 1) %>%
+  add_indent(c(4:6), level_of_indent = 2) %>% 
+  row_spec(c(1,8), bold = TRUE) %>% 
+  row_spec(c(11), color = "red")
+
+tab2
+
+```
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+tab3 <- table1x(df.tab3,
+                c("factor(tenstrata)",
+                "factor(agecat)",
+                "factor(c30_sex)",
+                "wt",
+                "factor(malnutrition)",
+                "factor(fever)",
+                "c36a_hr",
+                "rr",
+                "spo2",
+                "factor(hypox)",
+                "factor(wheez)",
+                "factor(danger)",
+                "factor(indraw)",
+                "factor(nodding)",
+                "factor(flaring)",
+                "factor(grunt)",
+                "factor(stridor)",
+                "factor(tugging)",
+                "factor(retraction)",
+                "factor(drink)",
+                "factor(vomit)",
+                "factor(convulsion)",
+                "factor(unconscious)"
+                ),
+                "factor(trt_scrambled)")
+
+tab3 <- tab3[,c(1,2)]
+
+tab3 <- rowinsert(locations = c(4),
+                  rownm = c("factor(tenstrata) (4)"),
+                  tab = tab3,
+                  rowdata = c("0 (0%)"))
+
+
+tab3 <- rowinsert(locations = c(5),
+                  rownm = c("factor(tenstrata) (5)"),
+                  tab = tab3,
+                  rowdata = c("0 (0%)"))
+
+tab3 <- tab3[str_detect(rownames(tab3), "\\b(0)\\b") == "FALSE" &
+               str_detect(rownames(tab3), "\\b(NA)\\b") == "FALSE",]
+
+tab3$order <- c(1:nrow(tab3))
+
+tab3 <- rowinsert(locations = c(1,11,14),
+                  rownm = c("tenstrata", "agecat", "sex"),
+                  tab = tab3)
+
+tab3$order <- NULL
+
+rownames(tab3) <- c("International Research Center and randomization stratification",
+                    paste0("Strata ", c(1:10)), "Child’s age (months)",
+                    "<2 months", "3-5 months", "6-11 months", "Child sex", "Male", "Female",
+                    "Weight (kg)", "Severe acute malnutrition", "Temperature >38 C", 
+                    "Average Heart rate", "Average Respiratory rate", "Average SpO2", "Hypoxemia",
+                    "Wheeze +/- crackles", "At least one respiratory danger sign", "Chest indrawing",
+                    "Head nodding", "Persistent nasal flaring",
+                    "Grunting", "Stridor when calm", "Tracheal tugging", "Intercostal retractions",
+                    "Unable to drink or breastfeed, n (%)", "Vomiting everything, n (%)", 
+                    "Convulsions, n (%)", "Lethargy or unconscious, n (%)")
+
+tab3 <- tab3 %>% 
+  kable(caption = "Pneumonia case characteristics to be reported") %>% 
+    kableExtra::kable_classic_2(latex_options = "HOLD_position") %>%
+  add_indent(c(2:11, 13:15, 17:18), level_of_indent = 1)
+
+tab3
+```
+

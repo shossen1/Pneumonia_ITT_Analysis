@@ -1,0 +1,271 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\hypersetup{
+  pdftitle={Intention-to-Treat analysis for stunting in 1-year old children},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+\urlstyle{same} % disable monospaced font for URLs
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage{makecell}
+\usepackage{xcolor}
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+
+\title{\textbf{Intention-to-Treat analysis for stunting in 1-year old
+children}}
+\usepackage{etoolbox}
+\makeatletter
+\providecommand{\subtitle}[1]{% add subtitle to \maketitle
+  \apptocmd{\@title}{\par {\large #1 \par}}{}{}
+}
+\makeatother
+\subtitle{\textbf{Version 1.6}}
+\author{}
+\date{\vspace{-2.5em}March 24, 2022}
+
+\begin{document}
+\maketitle
+
+{
+\setcounter{tocdepth}{2}
+\tableofcontents
+}
+\begin{table}[H]
+
+\caption{\label{tab:unnamed-chunk-2}Baseline characteristics to be reported of liveborn children}
+\centering
+\begin{tabular}[t]{l|l|l}
+\hline
+  & A & B\\
+\hline
+International Research Center and randomization stratification &  & \\
+\hline
+\hspace{1em}Strata 1 & 416 (25.9\%) & 382 (24.0\%)\\
+\hline
+\hspace{1em}Strata 2 & 39  (2.4\%) & 50  (3.1\%)\\
+\hline
+\hspace{1em}Strata 3 & 40  (2.5\%) & 36  (2.3\%)\\
+\hline
+\hspace{1em}Strata 4 & 42  (2.6\%) & 26  (1.6\%)\\
+\hline
+\hspace{1em}Strata 5 & 48  (3.0\%) & 41  (2.6\%)\\
+\hline
+\hspace{1em}Strata 6 & 379 (23.6\%) & 421 (26.5\%)\\
+\hline
+\hspace{1em}Strata 7 & 208 (13.0\%) & 191 (12.0\%)\\
+\hline
+\hspace{1em}Strata 8 & 167 (10.4\%) & 175 (11.0\%)\\
+\hline
+\hspace{1em}Strata 9 & 68  (4.2\%) & 66  (4.2\%)\\
+\hline
+\hspace{1em}Strata 10 & 198 (12.3\%) & 202 (12.7\%)\\
+\hline
+Gestational age (weeks) at intervention & 18.1 (3.3) & 18.1 (3.4)\\
+\hline
+Child sex &  & \\
+\hline
+\hspace{1em}Male & 800 (49.8\%) & 786 (49.4\%)\\
+\hline
+\hspace{1em}Female & 743 (46.3\%) & 731 (46.0\%)\\
+\hline
+Number of siblings in the house & 1.6 (1.1) & 1.6 (1.1)\\
+\hline
+Second-hand smoking & 76  (4.7\%) & 89  (5.6\%)\\
+\hline
+Household food insecurity score &  & \\
+\hline
+\hspace{1em}Mild & 261 (16.3\%) & 231 (14.5\%)\\
+\hline
+\hspace{1em}Moderate & 400 (24.9\%) & 464 (29.2\%)\\
+\hline
+\hspace{1em}Sereve & 925 (57.6\%) & 868 (54.6\%)\\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+
+\caption{\label{tab:unnamed-chunk-3}Other key characteristics of study population of liveborn children}
+\centering
+\begin{tabular}[t]{l|l|l}
+\hline
+  & A & B\\
+\hline
+\textbf{Maternal variables} & \textbf{} & \textbf{}\\
+\hline
+\hspace{1em}Mother’s age (years) & 25.4 (4.4) & 25.3 (4.5)\\
+\hline
+\hspace{1em}Mother’s highest level of education completed &  & \\
+\hline
+\hspace{2em}No formal education or some primary school (1 or 2) & 515 (32.1\%) & 524 (33.0\%)\\
+\hline
+\hspace{2em}Primary school or some secondary school incomplete (3 or 4) & 555 (34.6\%) & 536 (33.7\%)\\
+\hline
+\hspace{2em}Secondary school or vocational or university/college (5 or 6 or 7) & 534 (33.3\%) & 530 (33.3\%)\\
+\hline
+\hspace{1em}Gestational age (weeks) & 15.4 (3.2) & 15.4 (3.1)\\
+\hline
+\textbf{Child variables} & \textbf{} & \textbf{}\\
+\hline
+\hspace{1em}Birth weight-for-age z score & -0.8 (1.0) & -0.8 (1.0)\\
+\hline
+\hspace{1em}Exclusive breastfeeding & 576 (35.9\%) & 594 (37.4\%)\\
+\hline
+\textcolor{red}{\hspace{1em}Up-to-date vaccination status} & \textcolor{red}{} & \textcolor{red}{}\\
+\hline
+\end{tabular}
+\end{table}
+\begin{table}[H]
+
+\caption{\label{tab:unnamed-chunk-4}Pneumonia case characteristics to be reported}
+\centering
+\begin{tabular}[t]{l|l|l}
+\hline
+  & A & B\\
+\hline
+International Research Center and randomization stratification &  & \\
+\hline
+\hspace{1em}Strata 1 & 44 (50.6\%) & 38 (30.9\%)\\
+\hline
+\hspace{1em}Strata 2 & 0  (0.0\%) & 1  (0.8\%)\\
+\hline
+\hspace{1em}Strata 3 & 1  (1.1\%) & 2  (1.6\%)\\
+\hline
+\hspace{1em}Strata 4 & 0 (0\%) & 0 (0\%)\\
+\hline
+\hspace{1em}Strata 5 & 0 (0\%) & 0 (0\%)\\
+\hline
+\hspace{1em}Strata 6 & 29 (33.3\%) & 71 (57.7\%)\\
+\hline
+\hspace{1em}Strata 7 & 3  (3.4\%) & 1  (0.8\%)\\
+\hline
+\hspace{1em}Strata 8 & 4  (4.6\%) & 1  (0.8\%)\\
+\hline
+\hspace{1em}Strata 9 & 1  (1.1\%) & 0  (0.0\%)\\
+\hline
+\hspace{1em}Strata 10 & 5  (5.7\%) & 9  (7.3\%)\\
+\hline
+Child’s age (months) &  & \\
+\hline
+\hspace{1em}<2 months & 24 (27.6\%) & 66 (53.7\%)\\
+\hline
+\hspace{1em}3-5 months & 19 (21.8\%) & 28 (22.8\%)\\
+\hline
+\hspace{1em}6-11 months & 39 (44.8\%) & 22 (17.9\%)\\
+\hline
+Child sex &  & \\
+\hline
+\hspace{1em}Male & 45 (51.7\%) & 45 (36.6\%)\\
+\hline
+\hspace{1em}Female & 41 (47.1\%) & 78 (63.4\%)\\
+\hline
+Weight (kg) & 6.3 (2.4) & 5.1 (2.1)\\
+\hline
+Severe acute malnutrition & 8  (9.2\%) & 18 (14.6\%)\\
+\hline
+Temperature >38 C & 33 (37.9\%) & 18 (14.6\%)\\
+\hline
+Average Heart rate & 155.0 (20.7) & 158.0 (15.1)\\
+\hline
+Average Respiratory rate & 57.7 (14.3) & 62.0 (12.2)\\
+\hline
+Average SpO2 & 88.7 (6.8) & 88.8 (4.8)\\
+\hline
+Hypoxemia & 14 (16.1\%) & 14 (11.4\%)\\
+\hline
+Wheeze +/- crackles & 14 (16.1\%) & 19 (15.4\%)\\
+\hline
+At least one respiratory danger sign & 29 (33.3\%) & 28 (22.8\%)\\
+\hline
+Chest indrawing & 38 (43.7\%) & 59 (48.0\%)\\
+\hline
+Head nodding & 24 (27.6\%) & 35 (28.5\%)\\
+\hline
+Persistent nasal flaring & 16 (18.4\%) & 12  (9.8\%)\\
+\hline
+Grunting & 5  (5.7\%) & 7  (5.7\%)\\
+\hline
+Stridor when calm & 6  (6.9\%) & 10  (8.1\%)\\
+\hline
+Tracheal tugging & 33 (37.9\%) & 28 (22.8\%)\\
+\hline
+Intercostal retractions & 20 (23.0\%) & 34 (27.6\%)\\
+\hline
+Unable to drink or breastfeed, n (\%) & 11 (12.6\%) & 11  (8.9\%)\\
+\hline
+Vomiting everything, n (\%) & 5  (5.7\%) & 10  (8.1\%)\\
+\hline
+Convulsions, n (\%) & 6  (6.9\%) & 2  (1.6\%)\\
+\hline
+Lethargy or unconscious, n (\%) & 10 (11.5\%) & 15 (12.2\%)\\
+\hline
+\end{tabular}
+\end{table}
+
+\end{document}
