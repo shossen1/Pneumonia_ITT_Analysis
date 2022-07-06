@@ -27,6 +27,8 @@ library(broom)
 library(janitor)
 library(knitr)
 library(kableExtra)
+library(epiR)
+library(fmsb)
 
 df.tab <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab.csv")
 df.tab3 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
@@ -186,4 +188,42 @@ tab3 <- tab3 %>%
 
 tab3
 ```
+\newpage
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+df.tab <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab.csv")
+df.tab3 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
+
+df.tab <- left_join(df.tab, df.tab3[,c("hhid_blinded", "pneumonia")], by = "hhid_blinded")
+
+tab4 <- data.frame(matrix(ncol = 7, nrow = 2))
+tab4[,1] <- c("Group 1 (control), N", "Group 2 (intervention), N")
+tab4[,2] <- unlist(table(df.tab3$trt_scrambled, df.tab3$pneumonia))
+
+colnames(tab4) <- c("", "HAPIN pneumonia case", "Person-time in years of life", "Incidence rate",
+                    "Incidence rate ratio", "95% CI", "P-value")
+
+
+tab4[1,3] <- round(sum(df.tab$pt[df.tab$trt_scrambled == "A"], na.rm = TRUE)/365.25)
+tab4[2,3] <- round(sum(df.tab$pt[df.tab$trt_scrambled == "B"], na.rm = TRUE)/365.25)
+
+tab4[[4]] <- tab4[[2]] / tab4[[3]]
+tab4[1,c(5:7)] <- c("Reference", "Reference", "")
+tab4[2,5] <- round(tab4[1,4] / tab4[2,4], 2)
+tab4[[4]] <- round(tab4[[4]], 2)
+
+
+irr.tab <- 
+epi.2by2(dat = c(87, 1525, 123, 1540), method = "cohort.time", digits = 2, 
+   conf.level = 0.95, units = 1000, interpret = FALSE, 
+   outcome = "as.columns")
+
+irr.tab
+
+rateratio(87, 123, 1525, 1540)
+
+#tab4 %>% kable()
+
+```
+
 

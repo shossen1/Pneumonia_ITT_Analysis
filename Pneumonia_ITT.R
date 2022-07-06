@@ -18,10 +18,44 @@ list.files("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/")
 df.c36a <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c36a_20220428_unfmt.csv")
 df.c40 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c40_20220428_unfmt.csv")
 df.c41 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c41_20220428_unfmt.csv")
-df.nf <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_ITT_nf_20220428_unfmt.csv")
+df.nf <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_ITT_nf_20220526_unfmt.csv")
 df.lus <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_LUS_20220428_unfmt.csv")
 df.va <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_VA_20220428_fmt.csv")
 df.cxr <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_XRAY_20220428_fmt.csv")
+
+df.nf$e3_date_exit_c <- ifelse(!is.na(df.nf$e2_death_date), df.nf$e2_death_date, df.nf$e3_date_exit_c)
+
+df.nf$e3_date_exit_c <- as.Date(df.nf$e3_date_exit_c, format = "%Y-%m-%d")
+df.nf$e2_death_date <- as.Date(df.nf$e2_death_date, format = "%Y-%m-%d")
+df.nf$c30_dob <- as.Date(df.nf$c30_dob, format = "%Y-%m-%d")
+
+df.pt <- df.nf %>%
+  dplyr::select(hhid_blinded, c30_dob, e3_date_exit_c, e2_death_date, timepoint) %>%
+  dplyr::filter(!is.na(c30_dob) | !is.na(e2_death_date)) %>%
+  dplyr::arrange(timepoint) %>%
+  dplyr::group_by(hhid_blinded) %>%
+  fill(c30_dob, .direction = "downup") %>% 
+  fill(e3_date_exit_c, .direction = "downup") %>%
+  dplyr::select(hhid_blinded, c30_dob, e3_date_exit_c) %>%
+  dplyr::distinct() %>%
+  dplyr::filter(!is.na(c30_dob)) %>%
+  dplyr::mutate(pt = difftime(e3_date_exit_c, c30_dob, units = "days"),
+                fromleap = difftime(mdy(02092020), c30_dob, units = "days"))
+
+df.pt$pt <- ifelse(is.na(df.pt$pt) & df.pt$fromleap >=0 & df.pt$fromleap <= 366, 365,
+                   ifelse(is.na(df.pt$pt) & (df.pt$fromleap <0 | df.pt$fromleap > 366), 364, df.pt$pt))
+  
+  
+df.pt$pt <- df.pt$pt + 1
+
+# study exit - dob  (e3_date_exit_c - c30_dob), and cap it at 366 (or 365, see previous 
+
+# Note e3_date_exit_c needs to be replaced with e2_death_date.  
+  
+# Otherwise if e3_date_exit_c is missing and no child death, 
+# I think we assume the child was surveilled for the full year (and again, not to go over 366 days).
+
+
 
 # data = df.c36a
 # var1 = "c36a_oxy_60"
@@ -293,7 +327,7 @@ df.c36a <- fun.average(df.c36a, "c36a_h_date", "c36a", "c36a_pulse_60_R", "c36a_
 fun.datecheck <- function(data, datevar, prefix){
 df.dob <- df.nf %>% 
   dplyr::select(hhid_blinded, c30_dob) %>%
-  dplyr::filter(c30_dob != "") %>%
+  dplyr::filter(!is.na(c30_dob)) %>%
   dplyr::distinct(hhid_blinded, .keep_all = TRUE)
 
 data$datevar <- data[[datevar]]
@@ -573,11 +607,11 @@ dcheck <- dl %>%
 
 
 
-
 write.csv(dl, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_05-30-2022.csv")
 
 df.tab <- df.nf %>%
-  dplyr::filter(timepoint == "BL")
+  dplyr::filter(timepoint == "BL") %>% 
+  dplyr::distinct(hhid_blinded, .keep_all = TRUE)
 
 df.tab$fies_cat = ifelse(df.tab$fies_cat == 0, 3,
                          ifelse(df.tab$fies_cat == 1, 2,
@@ -596,7 +630,7 @@ df.tab$tenstrata = ifelse(df.tab$s6_site == "", 1,
 
 df.nff <- df.nf %>% 
   dplyr::select(hhid_blinded, c30_dob) %>% 
-  dplyr::filter(c30_dob != "") %>% 
+  dplyr::filter(!is.na(c30_dob)) %>% 
   dplyr::distinct() %>% 
   dplyr::rename(c30_dob2 = c30_dob)
 
@@ -635,6 +669,10 @@ df.tab <- dfy %>%
   dplyr::select(hhid_blinded, ebf) %>%
   dplyr::right_join(df.tab, by = "hhid_blinded")
 
+df.tab <- left_join(df.tab, df.pt[,c("hhid_blinded", "pt")], by = "hhid_blinded") %>% 
+  dplyr::distinct(hhid_blinded, .keep_all = TRUE)
+
+
 
 
 write.csv(df.tab, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab.csv")
@@ -656,9 +694,6 @@ write.csv(df.c36, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c36.csv"
 write.csv(df.c36a, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c36a.csv")
 write.csv(df.c40, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c40.csv")
 write.csv(df.c41, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c41.csv")
-
-
-
 
 
 

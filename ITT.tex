@@ -267,5 +267,44 @@ Lethargy or unconscious, n (\%) & 10 (11.5\%) & 15 (12.2\%)\\
 \hline
 \end{tabular}
 \end{table}
+\newpage
+
+\begin{verbatim}
+##              Outcome +    Time at risk        Inc rate *
+## Exposed +           87            1525              57.0
+## Exposed -          123            1540              79.9
+## Total              210            3065              68.5
+## 
+## Point estimates and 95% CIs:
+## -------------------------------------------------------------------
+## Inc rate ratio                                 0.71 (0.54, 0.95)
+## Attrib rate in the exposed *                   -22.82 (-41.34, -4.30)
+## Attrib fraction in the exposed (%)            -40.00 (-86.42, -5.53)
+## Attrib rate in the population *                -11.35 (-28.24, 5.53)
+## Attrib fraction in the population (%)         -16.57 (-21.50, -11.45)
+## -------------------------------------------------------------------
+##  Wald confidence limits
+##  CI: confidence interval
+##  * Outcomes per 1000 units of population time at risk
+\end{verbatim}
+
+\begin{verbatim}
+##           Cases Person-time
+## Exposed      87        1525
+## Unexposed   123        1540
+## Total       210        3065
+\end{verbatim}
+
+\begin{verbatim}
+## 
+##  Incidence rate ratio estimate and its significance probability
+## 
+## data:  87 123 1525 1540
+## p-value = 0.01581
+## 95 percent confidence interval:
+##  0.5427788 0.9399553
+## sample estimates:
+## [1] 0.7142743
+\end{verbatim}
 
 \end{document}
