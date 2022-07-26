@@ -8,6 +8,7 @@ library(tidyverse)
 library(doit4me)
 library(lubridate)
 library(fuzzyjoin)
+library(readxl)
 
 ### Load datasets
 getwd()
@@ -246,6 +247,8 @@ df.c36$c36_temp <- ifelse(df.c36$c36_temp > 50,
 
 table(df.c36$c36_temp)
 
+df.c36 <- df.c36 %>% distinct()
+
 
 ################
 ###   C36a   ###
@@ -319,6 +322,24 @@ table(df.c36a$c36a_temp)
 df.c36a <- fun.average(df.c36a, "c36a_h_date", "c36a", "c36a_pulse_60_R", "c36a_pulse_90_R",
                           "c36a_pulse_120_R", "c36a_hr", hypox = 0)
 
+###################################################################################################
+df.c36a$c36a_hr[df.c36a$hhid_blinded == "Pneumoniai_2883"] <- NA
+df.c36a$c36a_oxym[df.c36a$hhid_blinded == "Pneumoniai_2883"] <- NA
+
+df.c36a <- df.c36a %>% 
+  distinct() %>%
+  distinct(hhid_blinded, c36a_date, .keep_all = TRUE) %>%
+  dplyr::filter(!(hhid_blinded == "Pneumoniai_1914" & c36a_date == "2020-01-06")) %>%
+  dplyr::filter(!(hhid_blinded == "Pneumoniai_2668" & c36a_date == "2019-10-01"))
+
+
+df.c36ax <- df.c36a %>% dplyr::filter(hhid_blinded == "Pneumoniai_1914")
+
+# Pneumoniai_2883: Two different time on same day, incorrect c36a_hr and c36a_oxym input
+# Pneumoniai_1125: 8 different visits
+# Pneumoniai_1914: Consecutive visits on 2020-01-06 and 2020-01-07
+# Pneumoniai_2668: Consecutive visits on 2019-10-01 and 2019-10-02
+###################################################################################################
 
 #########################
 ###   Checking date   ###
@@ -461,7 +482,8 @@ df.c36_v <- df.c36 %>%
   dplyr::arrange(hhid_blinded, c36_date) %>%
   dplyr::rename(date = c36_date,
                 wt = c36_wt) %>%
-  dplyr::mutate(form = "c36")
+  dplyr::mutate(form = "c36") %>%
+  distinct()
 
 df.c36a_v <- df.c36a %>%
   dplyr::select(hhid_blinded, c36a_h_date, c36a_cough, c36a_oxym, c36a_hypox,
@@ -481,7 +503,9 @@ df.c36a_v <- df.c36a %>%
   dplyr::arrange(hhid_blinded, c36a_h_date) %>%
   dplyr::rename(date = c36a_h_date,
                 wt = c36a_wt) %>%
-  dplyr::mutate(form = "c36a")
+  dplyr::mutate(form = "c36a") %>%
+  distinct()
+  
 
 dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid_blinded", "date", "form", "wt")) %>%
   dplyr::arrange(hhid_blinded, date) %>%
@@ -689,11 +713,209 @@ df.tab3$agecat <- ifelse(df.tab3$age <60, "<2m",
                                 ifelse(df.tab3>180 & df.tab3$age <366, "6-12", NA)))
 
 write.csv(df.tab3, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
-
 write.csv(df.c36, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c36.csv")
 write.csv(df.c36a, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c36a.csv")
 write.csv(df.c40, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c40.csv")
 write.csv(df.c41, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c41.csv")
+
+
+###########################
+###   Double-checking   ###
+###########################
+df.mi <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/hapin_uniquecases_MKreplication_13July2022.xlsx")
+df.mi$pneumiles <- 1
+
+df.check <- df.mi %>%
+  dplyr::rename(casestart = `~casestart`,
+                caseend = `~caseend`) %>%
+  dplyr::mutate(date = as.character(casestart)) %>%
+  full_join(df.tab3, by = c("hhid_blinded", "date")) %>%
+  dplyr::select(hhid_blinded, date, casestart, caseend, pneumonia, pneumiles) %>%
+  dplyr::group_by(hhid_blinded) %>%
+  dplyr::mutate(visit = 1:n()) %>%
+  dplyr::filter(is.na(pneumonia) | is.na(pneumiles)) %>%
+  dplyr::filter(!is.na(date))
+
+
+
+df.tab3x <- df.tab3 %>%
+  dplyr::filter(hhid_blinded %in% df.check$hhid_blinded) %>%
+  dplyr::select(hhid_blinded, c36_cough, c36_dyspnea, c36a_cough)
+
+
+df.c36x <- df.c36 %>%
+  dplyr::filter(hhid_blinded == "Pneumoniai_0082")
+
+df.c36ax <- df.c36a %>%
+  dplyr::filter(hhid_blinded == "Pneumoniai_0082")
+
+df.cxrx <- df.cxr %>%
+  dplyr::filter(hhid_blinded == "Pneumoniai_0082")
+
+unable to feed (<2 months of age): c36_feed (0 no, 1 yes) or
+not moving at all or moves with stimulation only (<2 months of age): c36_move (0 no, 1 yes)
+
+
+
+
+# dl$pneumonia <- 0
+# dl$pneumonia <- replace(dl$pneumonia,
+#                         (dl$c36_cough == 1 | dl$c36_dyspnea == 1) &
+#                           (dl$c36_danger == 1 | dl$c36_malnutrition == 1) &
+#                           (dl$cxr_dx == 1 | dl$lus_dx == 1), 1)
+# 
+# dl$pneumonia <- replace(dl$pneumonia,
+#                         (dl$c36a_cough == 1 | dl$c36a_dyspnea == 1) &
+#                           (dl$c36a_danger == 1 | dl$c36a_malnutrition == 1) &
+#                           (dl$cxr_dx == 1 | dl$lus_dx == 1), 1)
+# 
+# dl$pneumonia <- replace(dl$pneumonia,
+#                         (dl$c36_cough == 1 | dl$c36_dyspnea == 1) &
+#                           (dl$c36_hypox == 1 | dl$c36a_hypox == 1 |
+#                              dl$c40_hypox == 1 | dl$c40_adcare == 1 | dl$c41_adcare == 1), 1)
+# 
+# dl$pneumonia <- replace(dl$pneumonia,
+#                         (dl$c36a_cough == 1 | dl$c36a_dyspnea == 1) &
+#                           (dl$c36_hypox == 1 | dl$c36a_hypox == 1 |
+#                              dl$c40_hypox == 1 | dl$c40_adcare == 1 | dl$c41_adcare == 1), 1)
+# 
+# dl$pneumonia <- replace(dl$pneumonia, dl$pcvaCoD == 1, 1)
+
+
+# Why multiple:
+               # Pneumoniai_2883: Two different time on same day
+               # Pneumoniai_1125: 8 different visits
+               # Pneumoniai_1914: Consecutive visits on 2020-01-06 and 2020-01-07
+               # Pneumoniai_2668: Consecutive visits on 2019-10-01 and 2019-10-02
+
+# 12 VA which are not in Mile's list:
+#                  "Pneumoniai_3030" "Pneumoniai_0065" "Pneumoniai_0931" "Pneumoniai_1234"
+#                  "Pneumoniai_2820" "Pneumoniai_2794" "Pneumoniai_2717" "Pneumoniai_2258"
+#                  "Pneumoniai_0885" "Pneumoniai_0251" "Pneumoniai_3052" "Pneumoniai_3095"
+
+# EBF code update
+
+
+
+
+
+# Danger signs and severe malnutrition:  we should reach consensus on how we're thinking of these,
+# as shell doc / SAP might not go into sufficient detail and reflect latest conversations
+# I had with Eric while you were on leave, Shakir. 
+# For general danger signs, all ages: 
+#   c36_drink
+# c36_vomit
+# c36_convulsion
+# c36_convulsion_2
+# c36_unconscious
+# c36_stridor
+# 
+# For 0-59 days danger signs: 
+#   c36_feed
+# c36_move
+# c36_s_indraw  
+# c36_grunt
+# 
+# For severe malnutrition, <-3 z-score: 
+#   use wfl if 60 days-1yr (use waz if wfl is missing, 
+# e.g. due to missing length or incalculable/flagged wfl z-score)
+# use waz if <60 days
+# 
+# A note about dates:  there are clearly some remaining discrepancies, 
+# and I haven't fully looked for logic of whether there's a c40/c41 when 
+# C36 indicates a hospitalization for example.  There are a couple clear examples where discharge 
+# date is before admit date, but thankfully that doesn't seem to apply to a potential 
+# unique vs redundant case.  However, all that to say, there are a bunch of date discrepancies 
+# that we'll have to be on the same page about how to resolve (like if we want DMC to look 
+# into it or not).  
+# 
+# Note the below, just to make sure we're getting some of the same numbers from the individual 
+# CRFs (not necessarily unique cases, doesn't take into account dates, though all 1yr or less)
+# 
+# Verbal autopsy:
+#   probable pneumonia deaths = 12
+# 
+# C40: 
+#   advanced respiratory care=30
+# hypox: 10
+# advanced resp care or any hypox =40 (no overlap, it's 30+10)
+# 
+# C41:
+# advanced respiratory care = 17
+# 
+# I can do the same for danger signs, imaging, but at a certain point we might just want to
+# compare household IDs of what we're getting, I'm sure I'm probably missing something or
+# not considering something! 
+#   
+#   Ok, let me know if we need a call about any of this tomorrow or less doable for me but still
+# possible, Friday.  I'm pretty much offline from this Saturday until the 24th. 
+# 
+# ps meant to also say: 
+#   -176 unique cases
+# -Guatemala 68, India 9, Peru 17, Rwanda 82
+# -Arm A: 93 ; Arm B: 83
+# Male 89, Female 87
+# 
+# Also I'll try to work up something similar for denominator data -- I have preliminary person 
+# time for all children, but I still need to subtract out "case time" and we may need to reach 
+# some consensus on how that's defined.  If an outpatient severe pneumonia cases, 
+# do we just subtract out 30 days, and for inpatient cases, subtract out discharge-admit date
+# (or date c36/c36a filled out, whichever earlier),  + 14?    Note there might not be a 
+# discharge date for all inpatient cases, so it gets a little tricky. Also note arrival date not
+# filled out for c36, that was added for c36a, so to be consistent, we for start date might need
+# to use the date c36/c36a filled out -- that's what I've done for determining unique vs redundantcases). 
+# 
+# Also DMC is working on cleaning up date of death discrepancies between E2/C81/C82, 
+# and we haven't fully reckoned with temporary / permanent moves outside of study areas.
+# Thus, I feel pretty strongly, as probably you all do as well, that we also need to be able to 
+# replicate person time denominator :) 
+# #  
+# Thank you for the update. I have also been working on the application of the case definition.
+# I read the last version of the protocol that I have (20Jan2022) and the document 
+# ITT_pneumonia_shell tables_4 APRIL 2022.  Could you please help me clarify some questions?
+#   
+#   Infants <2 months of age don't require to have a cough or difficulty breathing, correct?
+# For them, only having hypoxemia or a danger sign + a positive image is considered pneumonia.
+#  Is temperature < 35.5°C or >38°C part of the case definition? Considered at the same 
+# level as a danger sign or malnutrition.
+# Grunting and severe chest indrawing are considered neonatal danger signs?
+# Hi Laura,
+# 
+# That is my understanding about irrelevance of cough and difficulty breathing for the primary 
+# case definition in children age <2 months. Do you have Eric’s ppt presentation with flow charts
+# of screening and case numbers? Numbers may change slightly as data have been cleaned,
+# but the logic should guide us.
+# It is my understanding that hypothermia and fever warrant LUS, which would result in a case 
+# depending on the blinded interpretation from a panel. Caution: there may be a local initial 
+#interpretation of LUS in some datasets.
+# Seems that way from the diagram.
+# 
+# All,
+# I hope we can all meet about the pneumonia data soon. Laura has made great progress. 
+# We have information to share about data cleaning (minor), some found in the process
+# of merging data sources by screening event. I am excited to hear about what Shakir, 
+# Miles or others have found as well. Maybe we could also discuss the denominator calculation plan.
+# I suppose it would be outcome specific? Are temporary migration and recent episodes the only way 
+# to have intermittent follow-up periods, or will we also include the pandemic periods when we could 
+# not detect any case because we were not doing surveillance? I think we need to encode the ages of 
+# follow-up periods, not just there total duration, in case we ever dare to explore it in a survival
+# analysis.
+# 
+# Please let me know your availability. I am completely flexible next week. 
+# We would like to include Anaite, Alex and Adly at some point.
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
