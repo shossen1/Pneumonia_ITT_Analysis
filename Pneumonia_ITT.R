@@ -12,17 +12,15 @@ library(readxl)
 
 ### Load datasets
 getwd()
-dlist <- list.files("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/20220428/")
-
 list.files("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/")
 
-df.c36a <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c36a_20220428_unfmt.csv")
-df.c40 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c40_20220428_unfmt.csv")
-df.c41 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c41_20220428_unfmt.csv")
-df.nf <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_ITT_nf_20220526_unfmt.csv")
-df.lus <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_LUS_20220428_unfmt.csv")
-df.va <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_VA_20220428_fmt.csv")
-df.cxr <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_XRAY_20220428_fmt.csv")
+df.c36a <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c36a_20220630_unfmt.csv")
+df.c40 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c40_20220630_unfmt.csv")
+df.c41 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c41_20220630_unfmt.csv")
+df.nf <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_ITT_nf_20220630_unfmt.csv")
+df.lus <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_LUS_20220630_unfmt.csv")
+df.va <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_VA_20220630_fmt.csv")
+df.cxr <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_XRAY_20220630_fmt.csv")
 
 df.nf$e3_date_exit_c <- ifelse(!is.na(df.nf$e2_death_date), df.nf$e2_death_date, df.nf$e3_date_exit_c)
 
@@ -227,9 +225,14 @@ for(ii in c("c36_drink", "c36_vomit", "c36_convulsion", "c36_unconscious", "c36_
 df.c36$c36_danger <- ifelse(df.c36$c36_drink == 1 |
                           df.c36$c36_vomit == 1 |
                           df.c36$c36_convulsion == 1 |
+                          df.c36$c36_convulsion_2 == 1 |
                           df.c36$c36_unconscious == 1 |
+                          df.c36$c36_stridor == 1 |
                           (df.c36$c36_feed == 1 & df.c36$c36_age < 2) |
-                          (df.c36$c36_move == 1 & df.c36$c36_age < 2), 1, 0)
+                          (df.c36$c36_move == 1 & df.c36$c36_age < 2) |
+                          (df.c36$c36_s_indraw == 1 & df.c36$c36_age < 2) |
+                          (df.c36$c36_stridor == 1 & df.c36$c36_age < 2), 1, 0)
+
 
 table(df.c36$c36_danger)
 table(df.c36$c36_malnutrition)
@@ -297,11 +300,15 @@ for(ii in c("c36a_drink", "c36a_vomit", "c36a_convulsion", "c36a_unconscious", "
 #                             ifelse(df.c36a$c36a_feed == "No, the child is feeding well", "No", NA))
 
 df.c36a$c36a_danger <- ifelse(df.c36a$c36a_drink == 1 |
-                           df.c36a$c36a_vomit == 1 |
-                           df.c36a$c36a_convulsion == 1 |
-                           df.c36a$c36a_unconscious == 1 |
-                           (df.c36a$c36a_feed == 1 & df.c36a$c36a_age < 2) |
-                           (df.c36a$c36a_move == 1 & df.c36a$c36a_age < 2), 1, 0)
+                                df.c36a$c36a_vomit == 1 |
+                                df.c36a$c36a_convulsion == 1 |
+                                df.c36a$c36a_convulsion_2 == 1 |
+                                df.c36a$c36a_unconscious == 1 |
+                                df.c36a$c36a_stridor == 1 |
+                                (df.c36a$c36a_feed == 1 & df.c36a$c36a_age < 2) |
+                                (df.c36a$c36a_move == 1 & df.c36a$c36a_age < 2) |
+                                (df.c36a$c36a_s_indraw == 1 & df.c36a$c36a_age < 2) |
+                                (df.c36a$c36a_stridor == 1 & df.c36a$c36a_age < 2), 1, 0)
 
 table(df.c36a$c36a_danger)
 
@@ -465,7 +472,7 @@ df.va <- df.va %>%
 ###   Linking visits   ###
 ##########################
 df.c36_v <- df.c36 %>%
-  dplyr::select(hhid_blinded, c36_date, c36_cough, c36_oxym, c36_hypox,
+  dplyr::select(hhid_blinded, c36_date, c36_cough, c36_oxym, c36_hypox, c36_oxy_route,
                 c36_rr, c36_fastbreath, c36_dyspnea, c36_danger, c36_malnutrition, c36_wt,
                 c36_temp, c36_wheez, c36_indraw,
                 c36_nodding,
@@ -486,7 +493,7 @@ df.c36_v <- df.c36 %>%
   distinct()
 
 df.c36a_v <- df.c36a %>%
-  dplyr::select(hhid_blinded, c36a_h_date, c36a_cough, c36a_oxym, c36a_hypox,
+  dplyr::select(hhid_blinded, c36a_h_date, c36a_cough, c36a_oxym, c36a_hypox, c36a_oxy_route,
                 c36a_rr, c36a_fastbreath, c36a_dyspnea, c36a_danger, c36a_malnutrition, c36a_wt,
                 c36a_temp, c36a_hr, c36a_wheez, c36a_wheez_2, c36a_indraw,
                 c36a_nodding,
@@ -505,7 +512,13 @@ df.c36a_v <- df.c36a %>%
                 wt = c36a_wt) %>%
   dplyr::mutate(form = "c36a") %>%
   distinct()
-  
+
+write.csv(df.c36_v, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c36_v.csv")
+write.csv(df.c36a_v, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c36a_v.csv")
+
+write.csv(df.c40, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c40_v.csv")
+write.csv(df.c41, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c41_v.csv")
+
 
 dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid_blinded", "date", "form", "wt")) %>%
   dplyr::arrange(hhid_blinded, date) %>%
@@ -513,7 +526,7 @@ dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid_blinded", "date", "form", "wt"
   dplyr::mutate(visit = 1:n()) %>% 
   dplyr::mutate(pre2 = as.Date(date) - 2,
                 post2 = as.Date(date) + 2) %>%
-  fuzzy_left_join(df.c40[,c("hhid_blinded", "c40_date_arrive", "c40_hypox", "c40_adcare", "c40_temp", 
+  fuzzy_left_join(df.c40[,c("hhid_blinded", "c40_date_arrive", "c40_hypox", "c40_temp", 
                             "c40_oxym")],
                   by = c(
     "hhid_blinded" = "hhid_blinded",
@@ -522,15 +535,15 @@ dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid_blinded", "date", "form", "wt"
     match_fun = list(`==`, `<=`, `>=`)) %>%
   dplyr::select(-hhid_blinded.y) %>% 
   dplyr::rename(hhid_blinded = hhid_blinded.x) %>% 
-  fuzzy_left_join(df.c41[,c("hhid_blinded", "c41_date_admit", "c41_adcare")],
-                  by = c(
-                    "hhid_blinded" = "hhid_blinded",
-                    "pre2" = "c41_date_admit",
-                    "post2" = "c41_date_admit"),
-                  match_fun = list(`==`, `<=`, `>=`)) %>%
-  dplyr::select(-hhid_blinded.y) %>% 
-  dplyr::rename(hhid_blinded = hhid_blinded.x) %>% 
-  dplyr::mutate(hhid_unique = paste0(hhid_blinded, "_", visit)) %>% 
+  # fuzzy_left_join(df.c41[,c("hhid_blinded", "c41_date_admit", "c41_adcare")],
+  #                 by = c(
+  #                   "hhid_blinded" = "hhid_blinded",
+  #                   "pre2" = "c41_date_admit",
+  #                   "post2" = "c41_date_admit"),
+  #                 match_fun = list(`==`, `<=`, `>=`)) %>%
+  # dplyr::select(-hhid_blinded.y) %>% 
+  # dplyr::rename(hhid_blinded = hhid_blinded.x) %>% 
+  # dplyr::mutate(hhid_unique = paste0(hhid_blinded, "_", visit)) %>% 
   fuzzy_left_join(df.cxr,
                   by = c(
                     "hhid_blinded" = "hhid_blinded",
@@ -551,25 +564,40 @@ dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid_blinded", "date", "form", "wt"
   dplyr::mutate(hhid_unique = paste0(hhid_blinded, "_", visit))  %>%
   dplyr::full_join(df.va, by = c("hhid_blinded", "hhid_unique"))
 
-df.c36 <- left_join(df.c36, dl[,c("hhid_blinded", "hhid_unique", "date")],
-                    by = c("hhid_blinded", "c36_date" = "date"))
+df.c40.dl <- df.c40 %>% 
+  dplyr::select(hhid_blinded, c40_date_arrive, c40_adcare) %>% 
+  dplyr::rename(date = c40_date_arrive) %>% 
+  dplyr::filter(c40_adcare == 1)
 
-df.c36a <- left_join(df.c36a, dl[,c("hhid_blinded", "hhid_unique", "date")],
-                    by = c("hhid_blinded", "c36a_h_date" = "date"))
+df.c41.dl <- df.c41 %>% 
+  dplyr::select(hhid_blinded, c41_date_admit, c41_adcare) %>% 
+  dplyr::rename(date = c41_date_admit) %>% 
+  dplyr::filter(c41_adcare == 1)
 
-df.c40 <- left_join(df.c40, dl[,c("hhid_blinded", "hhid_unique", "c40_date_arrive")],
-                     by = c("hhid_blinded", "c40_date_arrive"))
+dl <- dl %>% 
+  dplyr::full_join(df.c40.dl, by = c("hhid_blinded", "date")) %>% 
+  dplyr::full_join(df.c41.dl, by = c("hhid_blinded", "date"))
 
-df.c41 <- left_join(df.c41, dl[,c("hhid_blinded", "hhid_unique", "c41_date_admit")],
-                    by = c("hhid_blinded", "c41_date_admit"))
+# df.c36 <- left_join(df.c36, dl[,c("hhid_blinded", "hhid_unique", "date")],
+#                     by = c("hhid_blinded", "c36_date" = "date"))
+# 
+# df.c36a <- left_join(df.c36a, dl[,c("hhid_blinded", "hhid_unique", "date")],
+#                     by = c("hhid_blinded", "c36a_h_date" = "date"))
+# 
+# df.c40 <- left_join(df.c40, dl[,c("hhid_blinded", "hhid_unique", "c40_date_arrive")],
+#                      by = c("hhid_blinded", "c40_date_arrive"))
+# 
+# df.c41 <- left_join(df.c41, dl[,c("hhid_blinded", "hhid_unique", "c41_date_admit")],
+#                     by = c("hhid_blinded", "c41_date_admit"))
+# 
+# df.cxr <- left_join(df.cxr, dl[,c("hhid_blinded", "hhid_unique", "cxr_date")],
+#                     by = c("hhid_blinded", "cxr_date"))
+# 
+# df.lus <- left_join(df.lus, dl[,c("hhid_blinded", "hhid_unique", "lus_date")],
+#                     by = c("hhid_blinded", "lus_date"))
 
-df.cxr <- left_join(df.cxr, dl[,c("hhid_blinded", "hhid_unique", "cxr_date")],
-                    by = c("hhid_blinded", "cxr_date"))
 
-df.lus <- left_join(df.lus, dl[,c("hhid_blinded", "hhid_unique", "lus_date")],
-                    by = c("hhid_blinded", "lus_date"))
-
-
+# df.check <- dl %>% dplyr::filter(hhid_blinded == "Pneumoniai_0617")
 
 dl$pneumonia <- 0
 dl$pneumonia <- replace(dl$pneumonia,
@@ -584,16 +612,27 @@ dl$pneumonia <- replace(dl$pneumonia,
 
 dl$pneumonia <- replace(dl$pneumonia,
                         (dl$c36_cough == 1 | dl$c36_dyspnea == 1) &
-                          (dl$c36_hypox == 1 | dl$c36a_hypox == 1 |
-                             dl$c40_hypox == 1 | dl$c40_adcare == 1 | dl$c41_adcare == 1), 1)
+                          (dl$c36_hypox == 1 | dl$c36a_hypox == 1 | dl$c40_hypox == 1), 1)
 
 dl$pneumonia <- replace(dl$pneumonia,
                         (dl$c36a_cough == 1 | dl$c36a_dyspnea == 1) &
-                          (dl$c36_hypox == 1 | dl$c36a_hypox == 1 |
-                             dl$c40_hypox == 1 | dl$c40_adcare == 1 | dl$c41_adcare == 1), 1)
+                          (dl$c36_hypox == 1 | dl$c36a_hypox == 1 | dl$c40_hypox == 1), 1)
+
+dl$pneumonia <- replace(dl$pneumonia,
+                        dl$c40_adcare == 1 | dl$c41_adcare == 1, 1)
+
+dl$pneumonia <- replace(dl$pneumonia, dl$c36_oxy_route == 2, 1)
+
+dl$pneumonia <- replace(dl$pneumonia, dl$c36a_oxy_route == 2 |
+                                      dl$c36a_oxy_route == 3 |
+                                      dl$c36a_oxy_route == 4 , 1)
+
 
 dl$pneumonia <- replace(dl$pneumonia, dl$pcvaCoD == 1, 1)
 table(dl$pneumonia)
+
+dll <- dl %>%
+  dplyr::filter(c40_adcare == 1 | c41_adcare == 1)
 
 
 dl$malnutrition <- fun.combine("malnutrition")
@@ -737,51 +776,6 @@ df.check <- df.mi %>%
   dplyr::filter(!is.na(date))
 
 
-
-df.tab3x <- df.tab3 %>%
-  dplyr::filter(hhid_blinded %in% df.check$hhid_blinded) %>%
-  dplyr::select(hhid_blinded, c36_cough, c36_dyspnea, c36a_cough)
-
-
-df.c36x <- df.c36 %>%
-  dplyr::filter(hhid_blinded == "Pneumoniai_0082")
-
-df.c36ax <- df.c36a %>%
-  dplyr::filter(hhid_blinded == "Pneumoniai_0082")
-
-df.cxrx <- df.cxr %>%
-  dplyr::filter(hhid_blinded == "Pneumoniai_0082")
-
-unable to feed (<2 months of age): c36_feed (0 no, 1 yes) or
-not moving at all or moves with stimulation only (<2 months of age): c36_move (0 no, 1 yes)
-
-
-
-
-# dl$pneumonia <- 0
-# dl$pneumonia <- replace(dl$pneumonia,
-#                         (dl$c36_cough == 1 | dl$c36_dyspnea == 1) &
-#                           (dl$c36_danger == 1 | dl$c36_malnutrition == 1) &
-#                           (dl$cxr_dx == 1 | dl$lus_dx == 1), 1)
-# 
-# dl$pneumonia <- replace(dl$pneumonia,
-#                         (dl$c36a_cough == 1 | dl$c36a_dyspnea == 1) &
-#                           (dl$c36a_danger == 1 | dl$c36a_malnutrition == 1) &
-#                           (dl$cxr_dx == 1 | dl$lus_dx == 1), 1)
-# 
-# dl$pneumonia <- replace(dl$pneumonia,
-#                         (dl$c36_cough == 1 | dl$c36_dyspnea == 1) &
-#                           (dl$c36_hypox == 1 | dl$c36a_hypox == 1 |
-#                              dl$c40_hypox == 1 | dl$c40_adcare == 1 | dl$c41_adcare == 1), 1)
-# 
-# dl$pneumonia <- replace(dl$pneumonia,
-#                         (dl$c36a_cough == 1 | dl$c36a_dyspnea == 1) &
-#                           (dl$c36_hypox == 1 | dl$c36a_hypox == 1 |
-#                              dl$c40_hypox == 1 | dl$c40_adcare == 1 | dl$c41_adcare == 1), 1)
-# 
-# dl$pneumonia <- replace(dl$pneumonia, dl$pcvaCoD == 1, 1)
-
-
 # Why multiple:
                # Pneumoniai_2883: Two different time on same day
                # Pneumoniai_1125: 8 different visits
@@ -906,9 +900,42 @@ not moving at all or moves with stimulation only (<2 months of age): c36_move (0
 
 
 
-
-
-
+# 
+# ```{r, include=FALSE}
+# df1 <- dl %>%
+#   dplyr::full_join(df.ns, by = c("hhid_blinded", "date")) %>%
+#   dplyr::filter(pneumiles == 1)
+# #dplyr::filter(hhid_blinded %in% df.ns$hhid_blinded[df.ns$pneumiles == 1])
+# 
+# id9 <- df.ns$hhid_blinded[!(df.ns$hhid_blinded %in% unique(dl$hhid_blinded))]
+# 
+# df.c40_v$hhid_blinded[df.c40_v$c40_adcare == 1 & df.c40_v$hhid_blinded%in%id9]
+# df.c41_v$hhid_blinded[df.c41_v$c41_adcare == 1 & df.c41_v$hhid_blinded%in%id9]
+# 
+# 
+# df9.36 <- df.nf %>%
+#   dplyr::filter(hhid_blinded %in% id9 ) %>%
+#   dplyr::select(hhid_blinded, contains("c36_"), irc)
+# 
+# df9.36a <- df.c36a %>%
+#   dplyr::filter(hhid_blinded %in% id9 ) %>%
+#   dplyr::select(hhid_blinded, contains("c36a_"), irc)
+# 
+# restid <- unique(df1$hhid_blinded)[!(unique(df1$hhid_blinded) %in% id9)]
+# 
+# # "Pneumoniai_0116" "Pneumoniai_0498" "Pneumoniai_0680" "Pneumoniai_0824"
+# # "Pneumoniai_1113" "Pneumoniai_1118" "Pneumoniai_1651" "Pneumoniai_2003"
+# # "Pneumoniai_2535"
+# 
+# # Pneumoniai_0498
+# ```
+# 
+# * Among these `r kableExtra::text_spec(table(df.ns$pneumiles), color = "black")`, 8 ID had no C36/C36a data: Pneumoniai_0116, Pneumoniai_0680, Pneumoniai_0824, Pneumoniai_1113, Pneumoniai_1118, Pneumoniai_1651, Pneumoniai_2003, Pneumoniai_2535
+# 
+# 
+# * 1 ID (Pneumoniai_0498) had C36a after 365 days. c36a was on 2020-03-01 and DOB was on 2019-03-01
+# 
+# 
 
 
 

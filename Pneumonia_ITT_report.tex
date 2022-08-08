@@ -1,0 +1,226 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage{makecell}
+\usepackage{xcolor}
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same} % disable monospaced font for URLs
+\hypersetup{
+  pdftitle={Pneumonia case status checking report},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{\textbf{Pneumonia case status checking report}}
+\author{}
+\date{\vspace{-2.5em}05 August, 2022}
+
+\begin{document}
+\maketitle
+
+\hypertarget{total-number-of-cases-from-miless-list}{%
+\section{\texorpdfstring{Total number of cases from Miles's list:
+\textcolor{red}{176}}{Total number of cases from Miles's list: }}\label{total-number-of-cases-from-miless-list}}
+
+\hypertarget{total-number-of-cases-from-shakirs-list}{%
+\section{\texorpdfstring{Total number of cases from Shakir's list:
+\textcolor{red}{176}}{Total number of cases from Shakir's list: }}\label{total-number-of-cases-from-shakirs-list}}
+
+\hypertarget{number-of-ids-which-matched-on-case-status-and-date}{%
+\section{\texorpdfstring{Number of IDs which matched on case status and
+date:
+\textcolor{red}{155}}{Number of IDs which matched on case status and date: }}\label{number-of-ids-which-matched-on-case-status-and-date}}
+
+\hypertarget{there-are-cases-which-were-present-in-miless-list-but-were-absent-in-shakirs-list}{%
+\section{\texorpdfstring{There are \textcolor{red}{27} cases which were
+present in Miles's list but were absent in Shakir's
+list}{There are  cases which were present in Miles's list but were absent in Shakir's list}}\label{there-are-cases-which-were-present-in-miless-list-but-were-absent-in-shakirs-list}}
+
+\begin{itemize}
+\item
+  9 IDs had no data for C36, C36a, C40, C41: Pneumoniai\_0116,
+  Pneumoniai\_0498, Pneumoniai\_0680, Pneumoniai\_0824,
+  Pneumoniai\_1113, Pneumoniai\_1118, Pneumoniai\_1651,
+  Pneumoniai\_2003, Pneumoniai\_2535
+\item
+  10 IDs had no data for LUS or CXR: Pneumoniai\_0255, Pneumoniai\_0270,
+  Pneumoniai\_0577, Pneumoniai\_0651, Pneumoniai\_1412,
+  Pneumoniai\_1657, Pneumoniai\_1992, Pneumoniai\_2227,
+  Pneumoniai\_2710, Pneumoniai\_3120
+\item
+  For the rest of the 8 IDs:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Pneumoniai\_0082 on 2019-07-05: No danger-sign/malnutrition on this
+    visit
+  \item
+    Pneumoniai\_0436 on 2019-12-22: No danger-sign/malnutrition on this
+    visit
+  \item
+    Pneumoniai\_0536 on 2019-12-05: No cought/dyspnea
+  \item
+    Pneumoniai\_0593 on 2019-09-16: No cought/dyspnea
+  \item
+    Pneumoniai\_0807 on 2019-09-17: No danger-sign/malnutrition on this
+    visit
+  \item
+    Pneumoniai\_0980 on 2020-01-02: No danger-sign/malnutrition on this
+    visit
+  \item
+    Pneumoniai\_1186 on 2019-12-28: No danger-sign/malnutrition on this
+    visit
+  \item
+    Pneumoniai\_1395 on 2019-03-04: No cought/dyspnea
+  \item
+    Pneumoniai\_2067 on 2019-11-09: No danger-sign/malnutrition on this
+    visit
+  \item
+    Pneumoniai\_2482 on 2018-11-15: CXR was done on 2018-11-09
+  \item
+    Pneumoniai\_2671 on 2019-10-30: No danger-sign/malnutrition on this
+    visit
+  \item
+    Pneumoniai\_2938 on 2020-02-05: Positive for cough and danger-sign
+    but negative CXR
+  \item
+    Pneumoniai\_3010 on 2019-01-17: No danger-sign/malnutrition on this
+    visit
+  \item
+    Pneumoniai\_3055 on 2020-03-16: No danger-sign/malnutrition on this
+    visit
+  \item
+    Pneumoniai\_3116 on 2019-09-27: No cought/dyspnea on that day,
+    however it was enlisted as case in Shakir's list on 2019-10-04.
+  \end{itemize}
+\end{itemize}
+
+\hypertarget{there-are-cases-which-were-present-in-shakirs-list-but-were-absent-in-miless-list}{%
+\section{\texorpdfstring{There are \textcolor{red}{21} cases which were
+present in Shakir's list but were absent in Miles's
+list}{There are  cases which were present in Shakir's list but were absent in Miles's list}}\label{there-are-cases-which-were-present-in-shakirs-list-but-were-absent-in-miless-list}}
+
+\begin{itemize}
+\item
+  Among these 21 cases, \textcolor{red}{0} were diagnosed as pneumonia
+  by verbal autopsy:
+\item
+  For the rest of the IDs:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Pneumoniai\_0128 on 2020-03-08: Cough + malnutrition + Hypoxia
+  \item
+    Pneumoniai\_0321 on 2019-06-14: Cough + Dyspnea (C36) + Hypoxia
+    (C40)
+  \item
+    Pneumoniai\_0578 on 2020-01-04: Cough + Malnutrition + Hypoxia
+  \item
+    Pneumoniai\_0651 on 2019-09-04: On Miles list it was enlisted as
+    case on 2019-09-03
+  \item
+    Pneumoniai\_0832 on 2019-12-22: Cough + Hypoxia
+  \item
+    Pneumoniai\_0915 on 2021-03-11: Cough + Hypoxia
+  \item
+    Pneumoniai\_1207 on 2020-03-06: Dyspnea + Danger-sign + Hypoxia
+  \item
+    Pneumoniai\_1387 on 2019-12-27: Dyspnea + Malnutrition + Hypoxia
+  \item
+    Pneumoniai\_1413 on 2019-04-21: Dyspnea + Hypoxia
+  \item
+    Pneumoniai\_1577 on 2019-07-05: Cough + Dyspnea + Hypoxia(C40)
+  \item
+    Pneumoniai\_1657 on 2019-09-20: On Miles list it was enlisted as
+    case on 2019-09-22
+  \item
+    Pneumoniai\_1934 on 2019-09-11: Dyspnea + Hypoxia
+  \item
+    Pneumoniai\_2026 on 2020-02-28: Cough + Dyspnea + Hypoxia
+  \item
+    Pneumoniai\_2382 on 2019-03-17: Dyspnea + Danger-sign + Hypoxia(C40)
+  \item
+    Pneumoniai\_2668 on 2019-10-02: Cough + Hypoxia (Has multiple entry
+    on same day. One entry has to be removed)
+  \item
+    Pneumoniai\_2816 on 2019-01-25: Cough + Dyspnea (C36) + Hypoxia
+    (C40)
+  \item
+    Pneumoniai\_2992 on 2020-02-01: Cough + Dyspnea + Hypoxia
+  \item
+    Pneumoniai\_3116 on 2019-10-04: On Miles list it was enlisted as
+    case on 2019-09-27
+  \item
+    Pneumoniai\_3126 on 2019-03-25: Cough + Hypoxia
+  \end{itemize}
+\end{itemize}
+
+\end{document}

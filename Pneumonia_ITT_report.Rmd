@@ -1,0 +1,223 @@
+---
+title: "**Pneumonia case status checking report**"
+subtitle: ""
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+header-includes:
+  - \usepackage{float}
+output:
+  pdf_document: 
+    highlight: zenburn
+    latex_engine: xelatex
+    toc: no
+    keep_tex: yes
+  extra_dependencies: ["float"]
+  html_document: default
+  word_document: default
+editor_options: 
+  chunk_output_type: inline
+  markdown: 
+    wrap: 72
+---
+
+```{r, include=FALSE}
+rm(list = ls())
+set.seed(443527)
+
+library(dplyr)
+library(readxl)
+library(kableExtra)
+```
+
+
+```{r, include=FALSE}
+###########################
+###   Double-checking   ###
+###########################
+df.c36a <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c36a_20220630_unfmt.csv")
+df.c40 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c40_20220630_unfmt.csv")
+df.c41 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c41_20220630_unfmt.csv")
+df.nf <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_ITT_nf_20220630_unfmt.csv")
+df.lus <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_LUS_20220630_unfmt.csv")
+df.va <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_VA_20220630_fmt.csv")
+df.cxr <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_XRAY_20220630_fmt.csv")
+
+df.c36 <- df.nf %>% 
+  dplyr::select(hhid_blinded, contains("c36_"))
+
+df.c36_v <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c36_v.csv")
+df.c36a_v <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c36a_v.csv")
+df.c40_v <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c40_v.csv")
+df.c41_v <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c41_v.csv")
+
+
+dl <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_05-30-2022.csv") 
+
+df.tab3 <- dl %>% dplyr::filter(pneumonia == 1)
+
+df.mi <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/hapin_uniquecases_MKreplication_13July2022.xlsx") %>%
+  dplyr::mutate(pneumiles = 1) %>%
+  dplyr::rename(casestart = `~casestart`,
+                caseend = `~caseend`) %>%
+  dplyr::mutate(date = as.character(casestart))
+  
+
+df.s <- inner_join(df.tab3, df.mi, by = c("hhid_blinded", "date"))
+df.check <- df.mi %>%
+  full_join(df.tab3, by = c("hhid_blinded", "date")) %>%
+  dplyr::select(hhid_blinded, date, casestart, caseend, pneumonia, pneumiles) %>%
+  dplyr::group_by(hhid_blinded) %>%
+  dplyr::mutate(visit = 1:n()) %>%
+  dplyr::filter(is.na(pneumonia) | is.na(pneumiles)) 
+
+```
+
+
+# Total number of cases from Miles's list: `r kableExtra::text_spec(dim(df.mi)[1], color = "red")`
+
+# Total number of cases from Shakir's list: `r kableExtra::text_spec(dim(df.tab3)[1], color = "red")`
+
+
+# Number of IDs which matched on case status and date: `r kableExtra::text_spec(dim(df.s)[1], color = "red")`
+
+```{r, include=FALSE}
+
+fun.look <- function(id){
+  
+  df.check <- df.check %>% dplyr::filter(hhid_blinded == id)
+  
+  df.mi <- df.mi %>% 
+    dplyr::anti_join(df.s, by = c("hhid_blinded", "date")) %>% 
+    dplyr::filter(hhid_blinded == id)
+  
+  df.c36_v <- df.c36_v %>% 
+    dplyr::filter(hhid_blinded == id) %>% 
+    dplyr::select(hhid_blinded, date, c36_cough, c36_dyspnea, c36_danger, c36_malnutrition, c36_hypox)
+  
+  df.c36a_v <- df.c36a_v %>%
+    dplyr::filter(hhid_blinded == id) %>% 
+    dplyr::select(hhid_blinded, date, c36a_cough, c36a_dyspnea, c36a_danger, c36a_malnutrition, c36a_hypox)
+    
+  df.c40_v <- df.c40_v %>% 
+    dplyr::filter(hhid_blinded == id) %>% 
+    dplyr::select(hhid_blinded, c40_date_arrive, c40_hypox, c40_adcare)
+  
+  df.c41_v <- df.c41_v %>%
+    dplyr::filter(hhid_blinded == id) %>% 
+    dplyr::select(hhid_blinded, c41_date_admit, c41_adcare)
+  
+  df.lus <- df.lus %>%
+    dplyr::filter(hhid_blinded == id) %>% 
+    dplyr::select(hhid_blinded, date, pneumonia, pneumonia_final)
+  
+  df.cxr <- df.cxr %>%
+    dplyr::filter(hhid_blinded == id)
+  
+  df.c36 <- df.c36 %>%  dplyr::filter(hhid_blinded == id)
+  df.c36a <- df.c36a %>% dplyr::filter(hhid_blinded == id)
+  df.c40 <- df.c40 %>% dplyr::filter(hhid_blinded == id)
+  df.c41 <- df.c41 %>% dplyr::filter(hhid_blinded == id)
+
+View(df.check);# View(df.mi)
+View(df.c36_v); View(df.c36a_v); #View(df.c40_v); View(df.c41_v)
+View(df.lus); View(df.cxr)
+View(df.c36); View(df.c36a); #View(df.c40); View(df.c41)
+}
+
+
+```
+
+```{r, include=FALSE}
+
+list1 <- na.omit(unique(df.check$hhid_blinded[df.check$pneumiles == 1]))
+#list1 <- list1[1:(length(list1)-1)]
+
+unique(c( df.c40_v$hhid_blinded[df.c40_v$c40_adcare == 1 & df.c40_v$hhid_blinded %in% list1],
+df.c41_v$hhid_blinded[df.c41_v$c41_adcare == 1 & df.c41_v$hhid_blinded %in% list1]))
+
+list1[!(list1 %in% df.c36_v$hhid_blinded) &
+        !(list1 %in% df.c36a_v$hhid_blinded) &
+        !(list1 %in% df.c40_v$hhid_blinded) &
+        !(list1 %in% df.c41_v$hhid_blinded) ] -> list2
+
+list3 <- list1[!(list1 %in% list2)]
+
+
+# fun.look( "Pneumoniai_0116")
+
+```
+# There are `r kableExtra::text_spec(length(list1), color = "red")` cases which were present in Miles's list but were absent in Shakir's list
+
+
+* `r length(list2)` IDs had no data for C36, C36a, C40, C41: `r unlist(list2)`
+  
+```{r, include=FALSE}
+list3[!(list3 %in% df.lus$hhid_blinded) &
+        !(list3 %in% df.cxr$hhid_blinded)] -> list4
+
+list5 <- list3[!(list3 %in% list4)]
+
+```
+
+* `r length(list4)` IDs had no data for LUS or CXR: `r unlist(list4)`
+
+* For the rest of the `r length(list5)` IDs:
+  + Pneumoniai_0082 on 2019-07-05: No danger-sign/malnutrition on this visit
+  + Pneumoniai_0436 on 2019-12-22: No danger-sign/malnutrition on this visit
+  + Pneumoniai_0536 on 2019-12-05: No cought/dyspnea 
+  + Pneumoniai_0593 on 2019-09-16: No cought/dyspnea 
+  + Pneumoniai_0807 on 2019-09-17: No danger-sign/malnutrition on this visit 
+  + Pneumoniai_0980 on 2020-01-02: No danger-sign/malnutrition on this visit 
+  + Pneumoniai_1186 on 2019-12-28: No danger-sign/malnutrition on this visit 
+  + Pneumoniai_1395 on 2019-03-04: No cought/dyspnea 
+  + Pneumoniai_2067 on 2019-11-09: No danger-sign/malnutrition on this visit 
+  + Pneumoniai_2482 on 2018-11-15: CXR was done on 2018-11-09
+  + Pneumoniai_2671 on 2019-10-30: No danger-sign/malnutrition on this visit
+  + Pneumoniai_2938 on 2020-02-05: Positive for cough and danger-sign but negative CXR
+  + Pneumoniai_3010 on 2019-01-17: No danger-sign/malnutrition on this visit 
+  + Pneumoniai_3055 on 2020-03-16: No danger-sign/malnutrition on this visit 
+  + Pneumoniai_3116 on 2019-09-27: No cought/dyspnea on that day, however it was enlisted as case in Shakir's list on 2019-10-04. 
+
+
+```{r, include=FALSE}
+list6 <- df.check$hhid_blinded[df.check$pneumonia & is.na(df.check$date)]
+```
+# There are `r kableExtra::text_spec(table(df.check$pneumonia), color = "red")` cases which were present in Shakir's list but were absent in Miles's list
+
+
+* Among these `r table(df.check$pneumonia)` cases, `r kableExtra::text_spec(length(df.check$hhid_blinded[is.na(df.check$date)]), color = "red")` were diagnosed as pneumonia by verbal autopsy: 
+
+`r unlist(list6)`
+
+```{r, include=FALSE}
+list7 <- na.omit(unique(df.check$hhid_blinded[df.check$pneumonia == 1 & !(is.na(df.check$date))]))
+
+# fun.look( "Pneumoniai_3126")
+
+```
+* For the rest of the IDs:
+  + Pneumoniai_0128 on 2020-03-08: Cough + malnutrition + Hypoxia
+  + Pneumoniai_0321 on 2019-06-14: Cough + Dyspnea (C36) + Hypoxia (C40)
+  + Pneumoniai_0578 on 2020-01-04: Cough + Malnutrition + Hypoxia
+  + Pneumoniai_0651 on 2019-09-04: On Miles list it was enlisted as case on 2019-09-03
+  + Pneumoniai_0832 on 2019-12-22: Cough + Hypoxia
+  + Pneumoniai_0915 on 2021-03-11: Cough + Hypoxia 
+  + Pneumoniai_1207 on 2020-03-06: Dyspnea + Danger-sign + Hypoxia
+  + Pneumoniai_1387 on 2019-12-27: Dyspnea + Malnutrition + Hypoxia
+  + Pneumoniai_1413 on 2019-04-21: Dyspnea + Hypoxia
+  + Pneumoniai_1577 on 2019-07-05: Cough + Dyspnea + Hypoxia(C40) 
+  + Pneumoniai_1657 on 2019-09-20: On Miles list it was enlisted as case on 2019-09-22
+  + Pneumoniai_1934 on 2019-09-11: Dyspnea + Hypoxia
+  + Pneumoniai_2026 on 2020-02-28: Cough + Dyspnea + Hypoxia
+  + Pneumoniai_2382 on 2019-03-17: Dyspnea + Danger-sign + Hypoxia(C40) 
+  + Pneumoniai_2668 on 2019-10-02: Cough + Hypoxia (Has multiple entry on same day. One entry has to be removed)
+  + Pneumoniai_2816 on 2019-01-25: Cough + Dyspnea (C36) + Hypoxia (C40)
+  + Pneumoniai_2992 on 2020-02-01: Cough + Dyspnea + Hypoxia
+  + Pneumoniai_3116 on 2019-10-04: On Miles list it was enlisted as case on 2019-09-27 
+  + Pneumoniai_3126 on 2019-03-25: Cough + Hypoxia
+
+
+
+
+
+
+
