@@ -448,7 +448,7 @@ df.cxr <- df.cxr %>%
   dplyr::mutate(cxr_date = as.Date(df.cxr$Image_date, format = "%d%B%Y")) %>% 
   dplyr::filter(cxr_dx == "pneumonia")
 
-df.cxr$cxr_dx <- ifelse(df.cxr$cxr_dx == "pneumonia", NA)
+df.cxr$cxr_dx <- ifelse(df.cxr$cxr_dx == "pneumonia", 1, NA)
 
 ##############################
 ###   Pneumonia cleaning   ###
@@ -764,18 +764,71 @@ write.csv(df.c41, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c41.csv"
 df.mi <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/hapin_uniquecases_MKreplication_13July2022.xlsx")
 df.mi$pneumiles <- 1
 
+df.lg <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/2022-08-11_Pneumonia_Primary case definition_LMG.xlsx")
+df.lg$posslaura <- ifelse(df.lg$Pneumonia == 2, 1, 0)
+df.lg$pneulaura <- ifelse(df.lg$Pneumonia == 1, 1, 0)
+
+df.lg <- df.lg %>% 
+  dplyr::mutate(date = c36_h_date_cal) %>% 
+  dplyr::select(hhid_blinded, date, posslaura, pneulaura, c36_h_date_cal) %>% 
+  dplyr::mutate(date = as.character(date))
+
+
 df.check <- df.mi %>%
   dplyr::rename(casestart = `~casestart`,
                 caseend = `~caseend`) %>%
   dplyr::mutate(date = as.character(casestart)) %>%
   full_join(df.tab3, by = c("hhid_blinded", "date")) %>%
-  dplyr::select(hhid_blinded, date, casestart, caseend, pneumonia, pneumiles) %>%
+  dplyr::rename(pneuskr = pneumonia) %>% 
+  dplyr::full_join(df.lg, by = c("hhid_blinded", "date")) %>% 
+  dplyr::select(hhid_blinded, date, casestart, c36_h_date_cal, pneuskr, pneumiles, posslaura, pneulaura) %>%
   dplyr::group_by(hhid_blinded) %>%
-  dplyr::mutate(visit = 1:n()) %>%
-  dplyr::filter(is.na(pneumonia) | is.na(pneumiles)) %>%
-  dplyr::filter(!is.na(date))
+  dplyr::mutate(visit_no = 1:n()) 
+  # dplyr::filter(is.na(pneumonia) | is.na(pneumiles)) %>%
+  # dplyr::filter(!is.na(date))
 
+for(p in c("pneuskr", "pneumiles", "posslaura", "pneulaura")){
+  df.check[[p]] <- ifelse(is.na(df.check[[p]]), 0, df.check[[p]])
+}
 
+df.check <- df.check %>% 
+  dplyr::filter(!(pneuskr == 0 & pneumiles == 0 & posslaura == 0 & pneulaura == 0)) %>% 
+  dplyr::rename(date_skr = date,
+                date_laura = c36_h_date_cal,
+                date_miles = casestart) 
+
+View(df.check)
+
+write.csv(df.check, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.check_08-13-2022.csv")
+
+#######################
+###   Eric's list   ###
+#######################
+list1 <- dl %>% 
+  dplyr::select(hhid_blinded, date, c36_cough, c36a_cough, c36_dyspnea, c36a_dyspnea, spo2) %>% 
+  dplyr::filter(is.na(spo2) & (c36_cough == 1 | c36a_cough == 1|
+                               c36_dyspnea == 1 | c36a_dyspnea == 1)) %>% 
+  left_join(df.nf[,c("hhid_blinded", "irc")], by = "hhid_blinded") %>% 
+  distinct()
+
+list2 <- dl %>% 
+  dplyr::select(hhid_blinded, date, c36_cough, c36a_cough, c36_dyspnea, c36a_dyspnea,
+                danger, cxr_dx, lus_dx) %>% 
+  dplyr::filter(is.na(cxr_dx) | is.na(lus_dx)) %>% 
+  dplyr::filter((c36_cough == 1 | c36a_cough == 1|
+                   c36_dyspnea == 1 | c36a_dyspnea == 1) & danger == 1) %>% 
+  left_join(df.nf[,c("hhid_blinded", "irc")], by = "hhid_blinded") %>% 
+  distinct()
+
+sum(is.na(list1$irc))
+sum(is.na(list2$irc))
+
+write.csv(list1, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/no_spo2.csv")
+write.csv(list2, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/no_radiodx.csv")
+
+#################
+###   Notes   ###
+#################
 # Why multiple:
                # Pneumoniai_2883: Two different time on same day
                # Pneumoniai_1125: 8 different visits
@@ -788,28 +841,14 @@ df.check <- df.mi %>%
 #                  "Pneumoniai_0885" "Pneumoniai_0251" "Pneumoniai_3052" "Pneumoniai_3095"
 
 # EBF code update
+# Laura's c36 date and c36_h dates are different for some IDs
 
 
 
 
 
-# Danger signs and severe malnutrition:  we should reach consensus on how we're thinking of these,
-# as shell doc / SAP might not go into sufficient detail and reflect latest conversations
-# I had with Eric while you were on leave, Shakir. 
-# For general danger signs, all ages: 
-#   c36_drink
-# c36_vomit
-# c36_convulsion
-# c36_convulsion_2
-# c36_unconscious
-# c36_stridor
-# 
-# For 0-59 days danger signs: 
-#   c36_feed
-# c36_move
-# c36_s_indraw  
-# c36_grunt
-# 
+
+
 # For severe malnutrition, <-3 z-score: 
 #   use wfl if 60 days-1yr (use waz if wfl is missing, 
 # e.g. due to missing length or incalculable/flagged wfl z-score)
