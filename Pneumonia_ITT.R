@@ -14,13 +14,13 @@ library(readxl)
 getwd()
 list.files("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/")
 
-df.c36a <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c36a_20220630_unfmt.csv")
-df.c40 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c40_20220630_unfmt.csv")
-df.c41 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c41_20220630_unfmt.csv")
-df.nf <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_ITT_nf_20220630_unfmt.csv")
-df.lus <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_LUS_20220630_unfmt.csv")
-df.va <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_VA_20220630_fmt.csv")
-df.cxr <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_XRAY_20220630_fmt.csv")
+df.c36a <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c36a_20220720_unfmt.csv")
+df.c40 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c40_20220720_unfmt.csv")
+df.c41 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c41_20220720_unfmt.csv")
+df.nf <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_ITT_nf_20220720_unfmt.csv")
+df.lus <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_LUS_20220720_unfmt.csv")
+df.va <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_VA_20220720_fmt.csv")
+df.cxr <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_XRAY_20220720_fmt.csv")
 
 df.nf$e3_date_exit_c <- ifelse(!is.na(df.nf$e2_death_date), df.nf$e2_death_date, df.nf$e3_date_exit_c)
 
@@ -524,8 +524,8 @@ dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid_blinded", "date", "form", "wt"
   dplyr::arrange(hhid_blinded, date) %>%
   dplyr::group_by(hhid_blinded) %>%
   dplyr::mutate(visit = 1:n()) %>% 
-  dplyr::mutate(pre2 = as.Date(date) - 2,
-                post2 = as.Date(date) + 2) %>%
+  dplyr::mutate(pre2 = as.Date(date) - 3,
+                post2 = as.Date(date) + 3) %>%
   fuzzy_left_join(df.c40[,c("hhid_blinded", "c40_date_arrive", "c40_hypox", "c40_temp", 
                             "c40_oxym")],
                   by = c(
@@ -797,9 +797,11 @@ df.check <- df.check %>%
                 date_laura = c36_h_date_cal,
                 date_miles = casestart) 
 
-View(df.check)
+table(df.check$pneuskr, df.check$pneumiles)
+table(df.check$pneuskr, df.check$pneulaura)
+table(df.check$pneumiles, df.check$pneulaura)
 
-write.csv(df.check, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.check_08-13-2022.csv")
+write.csv(df.check, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.check_08-21-2022.csv")
 
 #######################
 ###   Eric's list   ###
