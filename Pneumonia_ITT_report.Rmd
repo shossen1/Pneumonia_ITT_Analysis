@@ -54,20 +54,39 @@ dl <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_
 
 df.tab3 <- dl %>% dplyr::filter(pneumonia == 1)
 
-df.mi <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/hapin_uniquecases_MKreplication_13July2022.xlsx") %>%
-  dplyr::mutate(pneumiles = 1) %>%
-  dplyr::rename(casestart = `~casestart`,
-                caseend = `~caseend`) %>%
-  dplyr::mutate(date = as.character(casestart))
-  
+df.mi <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/hapin_uniquecases_MKreplication_24Aug2022.xlsx")
+df.mi$pneumiles <- 1
 
-df.s <- inner_join(df.tab3, df.mi, by = c("hhid_blinded", "date"))
+df.lg <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/2022-08-25_Pneumonia_Primary case definition_LMG.xlsx")
+df.lg$posslaura <- ifelse(df.lg$Pneumonia == 2, 1, 0)
+df.lg$pneulaura <- ifelse(df.lg$Pneumonia == 1, 1, 0)
+
+df.lg <- df.lg %>% 
+  dplyr::mutate(date = Pneumonia_date) %>% 
+  dplyr::select(hhid_blinded, date, posslaura, pneulaura, Pneumonia_date) %>% 
+  dplyr::mutate(date = as.character(date))
+
+
 df.check <- df.mi %>%
+  dplyr::rename(start = `start`,
+                end = `end`) %>%
+  dplyr::mutate(date = as.character(start)) %>%
   full_join(df.tab3, by = c("hhid_blinded", "date")) %>%
-  dplyr::select(hhid_blinded, date, casestart, caseend, pneumonia, pneumiles) %>%
+  dplyr::rename(pneuskr = pneumonia) %>% 
+  dplyr::full_join(df.lg, by = c("hhid_blinded", "date")) %>% 
+  dplyr::select(hhid_blinded, date, start, Pneumonia_date, pneuskr, pneumiles, posslaura, pneulaura) %>%
   dplyr::group_by(hhid_blinded) %>%
-  dplyr::mutate(visit = 1:n()) %>%
-  dplyr::filter(is.na(pneumonia) | is.na(pneumiles)) 
+  dplyr::mutate(visit_no = 1:n()) 
+
+for(p in c("pneuskr", "pneumiles", "posslaura", "pneulaura")){
+  df.check[[p]] <- ifelse(is.na(df.check[[p]]), 0, df.check[[p]])
+}
+
+df.check <- df.check %>% 
+  dplyr::filter(!(pneuskr == 0 & pneumiles == 0 & posslaura == 0 & pneulaura == 0)) %>% 
+  dplyr::rename(date_skr = date,
+                date_laura = Pneumonia_date,
+                date_miles = start) 
 
 ```
 
@@ -81,14 +100,16 @@ df.check <- df.mi %>%
 
 ```{r, include=FALSE}
 
+id = "Pneumoniai_1387"
+
 fun.look <- function(id){
   
   df.check <- df.check %>% dplyr::filter(hhid_blinded == id)
   
-  df.mi <- df.mi %>% 
-    dplyr::anti_join(df.s, by = c("hhid_blinded", "date")) %>% 
-    dplyr::filter(hhid_blinded == id)
-  
+  # df.mi <- df.mi %>% 
+  #   dplyr::anti_join(df.s, by = c("hhid_blinded", "date")) %>% 
+  #   dplyr::filter(hhid_blinded == id)
+  # 
   df.c36_v <- df.c36_v %>% 
     dplyr::filter(hhid_blinded == id) %>% 
     dplyr::select(hhid_blinded, date, c36_cough, c36_dyspnea, c36_danger, c36_malnutrition, c36_hypox)
@@ -107,7 +128,7 @@ fun.look <- function(id){
   
   df.lus <- df.lus %>%
     dplyr::filter(hhid_blinded == id) %>% 
-    dplyr::select(hhid_blinded, date, pneumonia, pneumonia_final)
+    dplyr::select(hhid_blinded, lus_date, pneumonia, pneumonia_final)
   
   df.cxr <- df.cxr %>%
     dplyr::filter(hhid_blinded == id)
@@ -142,7 +163,7 @@ list1[!(list1 %in% df.c36_v$hhid_blinded) &
 list3 <- list1[!(list1 %in% list2)]
 
 
-# fun.look( "Pneumoniai_0116")
+ fun.look("Pneumoniai_1387")
 
 ```
 # There are `r kableExtra::text_spec(length(list1), color = "red")` cases which were present in Miles's list but were absent in Shakir's list

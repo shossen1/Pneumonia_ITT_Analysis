@@ -131,7 +131,7 @@ tab3 <- table1x(df.tab3,
                 "spo2",
                 "factor(hypox)",
                 "factor(wheez)",
-                "factor(danger)",
+                #"factor(danger)", double-check danger <<<<<<<<<<<<<<<<<
                 "factor(indraw)",
                 "factor(nodding)",
                 "factor(flaring)",
@@ -170,16 +170,18 @@ tab3 <- rowinsert(locations = c(1,11,14),
 
 tab3$order <- NULL
 
-rownames(tab3) <- c("International Research Center and randomization stratification",
-                    paste0("Strata ", c(1:10)), "Child’s age (months)",
-                    "<2 months", "3-5 months", "6-11 months", "Child sex", "Male", "Female",
-                    "Weight (kg)", "Severe acute malnutrition", "Temperature >38 C", 
-                    "Average Heart rate", "Average Respiratory rate", "Average SpO2", "Hypoxemia",
-                    "Wheeze +/- crackles", "At least one respiratory danger sign", "Chest indrawing",
-                    "Head nodding", "Persistent nasal flaring",
-                    "Grunting", "Stridor when calm", "Tracheal tugging", "Intercostal retractions",
-                    "Unable to drink or breastfeed, n (%)", "Vomiting everything, n (%)", 
-                    "Convulsions, n (%)", "Lethargy or unconscious, n (%)")
+# rownames(tab3) <- c("International Research Center and randomization stratification",
+#                     paste0("Strata ", c(1:10)), "Child’s age (months)",
+#                     "<2 months", "3-5 months", "6-11 months", "Child sex", "Male", "Female",
+#                     "Weight (kg)", "Severe acute malnutrition", "Temperature >38 C", 
+#                     "Average Heart rate", "Average Respiratory rate", "Average SpO2", "Hypoxemia",
+#                     "Wheeze +/- crackles", "At least one respiratory danger sign", "Chest indrawing",
+#                     "Head nodding", "Persistent nasal flaring",
+#                     "Grunting", "Stridor when calm", "Tracheal tugging", "Intercostal retractions",
+#                     "Unable to drink or breastfeed, n (%)", "Vomiting everything, n (%)", 
+#                     "Convulsions, n (%)", "Lethargy or unconscious, n (%)")
+
+# use colnames after fixing danger 
 
 tab3 <- tab3 %>% 
   kable(caption = "Pneumonia case characteristics to be reported") %>% 
@@ -220,7 +222,7 @@ epi.2by2(dat = c(87, 1525, 123, 1540), method = "cohort.time", digits = 2,
 
 irr.tab
 
-rateratio(87, 123, 1525, 1540)
+rateratio(87, 123, 1525, 1540) # .>>.>>>>>>>>>>>>>>>>>>>>>>>>>>>>>. changed???
 
 #tab4 %>% kable()
 
