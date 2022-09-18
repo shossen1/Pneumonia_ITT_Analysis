@@ -36,28 +36,59 @@ df.nf$e2_death_date <- as.Date(df.nf$e2_death_date, format = "%Y-%m-%d")
 df.nf$c30_dob <- as.Date(df.nf$c30_dob, format = "%Y-%m-%d")
 
 # Person-time calculation
-df.pt <- df.nf %>%
-  dplyr::select(hhid_blinded, c30_dob, e3_date_exit_c, e2_death_date, timepoint) %>%
-  dplyr::filter(!is.na(c30_dob) | !is.na(e2_death_date)) %>%
-  dplyr::arrange(timepoint) %>%
-  dplyr::group_by(hhid_blinded) %>%
-  fill(c30_dob, .direction = "downup") %>% 
-  fill(e3_date_exit_c, .direction = "downup") %>%
+df.nf1 <- df.nf %>%
+  dplyr::select(hhid_blinded, c30_dob) %>% 
+  dplyr::filter(!is.na(c30_dob)) %>% 
+  dplyr::distinct()
+
+df.nf2 <- df.nf %>% 
+  dplyr::select(hhid_blinded, e3_date_exit_c, e2_death_date, e2_participant) %>% 
+  dplyr::filter(e2_participant == 3) %>% 
+  dplyr::filter(!(is.na(e3_date_exit_c) & is.na(e2_death_date))) %>% 
+  dplyr::select(hhid_blinded, e3_date_exit_c) %>% 
+  dplyr::distinct()
+
+df.pt <- full_join(df.nf1, df.nf2, by = "hhid_blinded") %>% 
   dplyr::select(hhid_blinded, c30_dob, e3_date_exit_c) %>%
-  dplyr::distinct() %>%
   dplyr::filter(!is.na(c30_dob)) %>%
+  dplyr::distinct() %>%
   dplyr::mutate(pt = difftime(e3_date_exit_c, c30_dob, units = "days"),
-                fromleap = difftime(mdy(02092020), c30_dob, units = "days"))
+                fromleap = difftime(mdy(02292020), c30_dob, units = "days"))
 
 df.pt$pt <- ifelse(is.na(df.pt$pt) & df.pt$fromleap >=0 & df.pt$fromleap <= 366, 365,
                    ifelse(is.na(df.pt$pt) & (df.pt$fromleap <0 | df.pt$fromleap > 366), 364, df.pt$pt))
   
-  
 df.pt$pt <- df.pt$pt + 1
 
+####################################
+###   Person-time double-check   ###
+####################################
+df.ptl <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/2022-09-15_HAPIN_Pneumonia_persondays.xlsx")
+
+df.ptl <- df.ptl %>% 
+  dplyr::group_by(hhid_blinded) %>% 
+  dplyr::mutate(n = 1:n()) %>% 
+  dplyr::filter(n == 1)
+
+df.ptm <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_pneumonia_cases_persontime_16sept2022.csv")
+
+View(df.ptm)
+
+sum(df.pt$pt)
+sum(df.ptl$TotalPersonDays)
+sum(df.ptm$final_pneupersontime)
+
+dfx <- full_join(df.pt[,c("hhid_blinded", "pt"),],
+                 df.ptm[,c("hhid_blinded", "final_pneupersontime"),],
+                 by = "hhid_blinded")
+
+dfx$diff <- dfx$final_pneupersontime - dfx$pt 
+
+
+# persontime - pneumonia duration
+# e3_reason_c
+
 # study exit - dob  (e3_date_exit_c - c30_dob), and cap it at 366 (or 365, see previous 
-
-
 # Otherwise if e3_date_exit_c is missing and no child death, 
 # I think we assume the child was surveilled for the full year (and again, not to go over 366 days).
 
@@ -635,22 +666,22 @@ dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid_blinded", "date", "form", "wt"
   dplyr::arrange(hhid_blinded, date) %>%
   dplyr::group_by(hhid_blinded) %>%
   dplyr::mutate(visit = 1:n()) %>% 
-  dplyr::mutate(pre2 = as.Date(date) - 3,
-                post2 = as.Date(date) + 3) %>%
+  dplyr::mutate(pre3 = as.Date(date) - 3,
+                post3 = as.Date(date) + 3) %>%
   fuzzy_left_join(df.c40[,c("hhid_blinded", "c40_date_arrive", "c40_hypox", "c40_temp", 
                             "c40_oxym")],
                   by = c(
     "hhid_blinded" = "hhid_blinded",
-    "pre2" = "c40_date_arrive",
-    "post2" = "c40_date_arrive"),
+    "pre3" = "c40_date_arrive",
+    "post3" = "c40_date_arrive"),
     match_fun = list(`==`, `<=`, `>=`)) %>%
   dplyr::select(-hhid_blinded.y) %>% 
   dplyr::rename(hhid_blinded = hhid_blinded.x) %>% 
   # fuzzy_left_join(df.c41[,c("hhid_blinded", "c41_date_admit", "c41_adcare")],
   #                 by = c(
   #                   "hhid_blinded" = "hhid_blinded",
-  #                   "pre2" = "c41_date_admit",
-  #                   "post2" = "c41_date_admit"),
+  #                   "pre3" = "c41_date_admit",
+  #                   "post3" = "c41_date_admit"),
   #                 match_fun = list(`==`, `<=`, `>=`)) %>%
   # dplyr::select(-hhid_blinded.y) %>%
   # dplyr::rename(hhid_blinded = hhid_blinded.x) %>%
@@ -658,8 +689,8 @@ dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid_blinded", "date", "form", "wt"
   fuzzy_left_join(df.cxr,
                   by = c(
                     "hhid_blinded" = "hhid_blinded",
-                    "pre2" = "cxr_date",
-                    "post2" = "cxr_date"),
+                    "pre3" = "cxr_date",
+                    "post3" = "cxr_date"),
                   match_fun = list(`==`, `<=`, `>=`)) %>%
   dplyr::select(-hhid_blinded.y) %>% 
   dplyr::rename(hhid_blinded = hhid_blinded.x) %>% 
@@ -667,8 +698,8 @@ dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid_blinded", "date", "form", "wt"
   fuzzy_left_join(df.lus,
                   by = c(
                     "hhid_blinded" = "hhid_blinded",
-                    "pre2" = "lus_date",
-                    "post2" = "lus_date"),
+                    "pre3" = "lus_date",
+                    "post3" = "lus_date"),
                   match_fun = list(`==`, `<=`, `>=`)) %>%
   dplyr::select(-hhid_blinded.y) %>% 
   dplyr::rename(hhid_blinded = hhid_blinded.x) %>% 
@@ -759,10 +790,6 @@ for(vv in c("danger",
 # dcheck <- dl %>% 
 #   dplyr::select(hhid_blinded, form, c36_malnutrition_der, c36a_malnutrition_der, malnutrition)
 
-
-
-
-write.csv(dl, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_05-30-2022.csv")
 
 df.tab <- df.nf %>%
   dplyr::filter(timepoint == "BL") %>% 
@@ -890,6 +917,16 @@ write.csv(df.c40, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c40.csv"
 write.csv(df.c41, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c41.csv")
 
 
+dl$pneumonia <- NULL
+dl <- dl %>% 
+  dplyr::left_join(df.tab3[,c("hhid_blinded", "date", "pneumonia")], by = c("hhid_blinded", "date"))
+
+table(df.tab3$pneumonia)
+table(dl$pneumonia)
+
+write.csv(dl, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_05-30-2022.csv")
+
+# 1210 175
 ###########################
 ###   Double-checking   ###
 ###########################
@@ -949,22 +986,8 @@ table(df.check$pneuskr, df.check$pneumiles)
 table(df.check$pneuskr, df.check$pneulaura)
 table(df.check$pneumiles, df.check$pneulaura)
 
-# df.check <- df.check %>% 
-#   dplyr::filter(hhid_blinded %in% dl$hhid_blinded[!is.na(dl$pcvaCoD)])
-
-# df.check <- df.check %>% 
-#   dplyr::filter(pneuskr != pneulaura) %>% 
-#   dplyr::select(-pneumiles, -posslaura, -date_miles) %>%
-#   dplyr::group_by(hhid_blinded) %>%
-#   dplyr::mutate(visit_no = 1:n()) 
-
 write.csv(df.check, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.check_08-31-2022.csv")
 
-# df.check <- df.check %>% 
-#   dplyr::filter((pneuskr !=  pneumiles) | (pneuskr != pneulaura) | (pneumiles != pneulaura))
-
-# df.check <- df.check %>% 
-#   dplyr::filter((pneumiles != pneulaura))
 
 id = "Pneumoniai_2992"
 
@@ -983,20 +1006,6 @@ d3 <- df.c40 %>%
 
 d4 <- df.c36 %>%
   filter(hhid_blinded == id)
-
-
-
-# unique(df.va$hhid_blinded[df.va$pcvaCoD == "Probable pneumonia"])[!(
-# unique(df.lg$hhid_blinded[df.lg$PneumoAutopsia == 1]) %in%
-# unique(df.va$hhid_blinded[df.va$pcvaCoD == "Probable pneumonia"])
-# )]
-# 
-# missmatch(unique(df.lg$hhid_blinded[df.lg$PneumoAutopsia == 1]),
-#             unique(df.va$hhid_blinded[df.va$pcvaCoD == "Probable pneumonia"]))
-
-# 1961: 
-
-
 
 
 #######################
@@ -1033,34 +1042,12 @@ d4 <- df.c36 %>%
                # Pneumoniai_1914: Consecutive visits on 2020-01-06 and 2020-01-07
                # Pneumoniai_2668: Consecutive visits on 2019-10-01 and 2019-10-02
 
-# 12 VA which are not in Mile's list:
-#                  "Pneumoniai_3030" "Pneumoniai_0065" "Pneumoniai_0931" "Pneumoniai_1234"
-#                  "Pneumoniai_2820" "Pneumoniai_2794" "Pneumoniai_2717" "Pneumoniai_2258"
-#                  "Pneumoniai_0885" "Pneumoniai_0251" "Pneumoniai_3052" "Pneumoniai_3095"
 
 # EBF code update
-# Laura's c36 date and c36_h dates are different for some IDs
+# VA date in dl?
+# Repeat cases as no pneumonia  in dl
 
-# Checking person time df.pt
-# Checking main code line by line
-# Comparing main code with the document
-# Double checking danger sign
-# vaccination
-# Fies cat
-# pm, co data adding
-# Manual checking tables
-
-# 30 days from diagnosis & 14 days from dricharge c41-discharge
-
-# removed two LUS(Pneumoniai_2287, Pneumoniai_2668) as LUS was done on consecutive days. It was creating duplicated cases.
-
-# Pneumoniai_2287 has two C36a dates "2020-06-04" "2020-06-05" I got pneumonia positive on 2020-06-04
-# Why Pneumoniai_1186 is VA positive in Laura's list?
-
-
-
-
-
+# Pneumoniai_3152 with two death dates
 
 
 
