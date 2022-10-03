@@ -33,13 +33,6 @@
   \KOMAoptions{parskip=half}}
 \makeatother
 \usepackage{xcolor}
-\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
-\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
-\hypersetup{
-  pdftitle={Intention-to-Treat analysis for stunting in 1-year old children},
-  hidelinks,
-  pdfcreator={LaTeX via pandoc}}
-\urlstyle{same} % disable monospaced font for URLs
 \usepackage[margin=1in]{geometry}
 \usepackage{graphicx}
 \makeatletter
@@ -76,6 +69,13 @@
 \ifLuaTeX
   \usepackage{selnolig}  % disable illegal ligatures
 \fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same} % disable monospaced font for URLs
+\hypersetup{
+  pdftitle={Intention-to-Treat analysis for stunting in 1-year old children},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
 
 \title{\textbf{Intention-to-Treat analysis for stunting in 1-year old
 children}}
@@ -87,7 +87,7 @@ children}}
 \makeatother
 \subtitle{\textbf{Version 1.6}}
 \author{}
-\date{\vspace{-2.5em}March 24, 2022}
+\date{\vspace{-2.5em}2022-09-30}
 
 \begin{document}
 \maketitle
@@ -98,213 +98,241 @@ children}}
 }
 \begin{table}[H]
 
-\caption{\label{tab:unnamed-chunk-2}Baseline characteristics to be reported of liveborn children}
+\caption{\label{tab:unnamed-chunk-3}Baseline characteristics to be reported of liveborn children}
 \centering
 \begin{tabular}[t]{l|l|l}
 \hline
-  & A & B\\
+  & Control (N = 1525) & Intervention (N = 1536)\\
 \hline
-International Research Center and randomization stratification &  & \\
+International Research Center &  & \\
 \hline
-\hspace{1em}Strata 1 & 416 (25.9\%) & 382 (24.0\%)\\
+\hspace{1em}Guatemala & 386 (25.3\%) & 384 (25.0\%)\\
 \hline
-\hspace{1em}Strata 2 & 39  (2.4\%) & 50  (3.1\%)\\
+\hspace{1em}India & 387 (25.4\%) & 388 (25.3\%)\\
 \hline
-\hspace{1em}Strata 3 & 40  (2.5\%) & 36  (2.3\%)\\
+\hspace{1em}Peru & 358 (23.5\%) & 385 (25.1\%)\\
 \hline
-\hspace{1em}Strata 4 & 42  (2.6\%) & 26  (1.6\%)\\
+\hspace{1em}Rwanda & 394 (25.8\%) & 379 (24.7\%)\\
 \hline
-\hspace{1em}Strata 5 & 48  (3.0\%) & 41  (2.6\%)\\
-\hline
-\hspace{1em}Strata 6 & 379 (23.6\%) & 421 (26.5\%)\\
-\hline
-\hspace{1em}Strata 7 & 208 (13.0\%) & 191 (12.0\%)\\
-\hline
-\hspace{1em}Strata 8 & 167 (10.4\%) & 175 (11.0\%)\\
-\hline
-\hspace{1em}Strata 9 & 68  (4.2\%) & 66  (4.2\%)\\
-\hline
-\hspace{1em}Strata 10 & 198 (12.3\%) & 202 (12.7\%)\\
-\hline
-Gestational age (weeks) at intervention & 18.1 (3.3) & 18.1 (3.4)\\
+Gestational age (weeks) at intervention &  & 18.1 (3.3)\\
 \hline
 Child sex &  & \\
 \hline
-\hspace{1em}Male & 800 (49.8\%) & 786 (49.4\%)\\
+\hspace{1em}Male & 788 (51.7\%) & 800 (52.1\%)\\
 \hline
-\hspace{1em}Female & 743 (46.3\%) & 731 (46.0\%)\\
+\hspace{1em}Female & 737 (48.3\%) & 736 (47.9\%)\\
 \hline
-Number of siblings in the house & 1.6 (1.1) & 1.6 (1.1)\\
+Number of siblings in the house & 1.7 (1.1) & 1.6 (1.1)\\
 \hline
-Second-hand smoking & 76  (4.7\%) & 89  (5.6\%)\\
+Second-hand smoking & 85  (5.6\%) & 76  (4.9\%)\\
 \hline
 Household food insecurity score &  & \\
 \hline
-\hspace{1em}Mild & 261 (16.3\%) & 231 (14.5\%)\\
+\hspace{1em}Food secure & 820 (53.8\%) & 904 (58.9\%)\\
 \hline
-\hspace{1em}Moderate & 400 (24.9\%) & 464 (29.2\%)\\
+\hspace{1em}Mild & 424 (27.8\%) & 403 (26.2\%)\\
 \hline
-\hspace{1em}Sereve & 925 (57.6\%) & 868 (54.6\%)\\
+\hspace{1em}Moderate/Sereve & 259 (17.0\%) & 208 (13.5\%)\\
+\hline
+Socio-economic Status & -0.064 (1.057) & 0.06 (1.018)\\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{l|r|l}
+\hline
+Variables & Total & Missing\\
+\hline
+Exclusive breastfeeding & 3061 & 645 (21.1\%)\\
+\hline
+Household food insecurity score & 3061 & 43 (1.4\%)\\
+\hline
+Gestational age (weeks) at intervention & 3061 & 1525 (49.8\%)\\
+\hline
+Second-hand smoking & 3061 & 7 (0.2\%)\\
+\hline
+Number of siblings in the house & 3061 & 1023 (33.4\%)\\
+\hline
+Up-to-date vaccination status & 3061 & 2518 (82.3\%)\\
+\hline
+Birth weight-for-age z score & 3061 & 59 (1.9\%)\\
 \hline
 \end{tabular}
 \end{table}
 
 \begin{table}[H]
 
-\caption{\label{tab:unnamed-chunk-3}Other key characteristics of study population of liveborn children}
+\caption{\label{tab:unnamed-chunk-5}Other key characteristics of study population of liveborn children}
 \centering
 \begin{tabular}[t]{l|l|l}
 \hline
-  & A & B\\
+  & Control (N = 1525) & Intervention (N = 1536)\\
 \hline
 \textbf{Maternal variables} & \textbf{} & \textbf{}\\
 \hline
-\hspace{1em}Mother’s age (years) & 25.4 (4.4) & 25.3 (4.5)\\
+\hspace{1em}Mother’s age (years) & 25.4 (4.5) & 25.3 (4.4)\\
 \hline
 \hspace{1em}Mother’s highest level of education completed &  & \\
 \hline
-\hspace{2em}No formal education or some primary school (1 or 2) & 515 (32.1\%) & 524 (33.0\%)\\
+\hspace{2em}No formal education or some primary school (1 or 2) & 540 (35.4\%) & 461 (30.0\%)\\
 \hline
-\hspace{2em}Primary school or some secondary school incomplete (3 or 4) & 555 (34.6\%) & 536 (33.7\%)\\
+\hspace{2em}Primary school or some secondary school incomplete (3 or 4) & 514 (33.7\%) & 538 (35.0\%)\\
 \hline
-\hspace{2em}Secondary school or vocational or university/college (5 or 6 or 7) & 534 (33.3\%) & 530 (33.3\%)\\
+\hspace{2em}Secondary school or vocational or university/college (5 or 6 or 7) & 471 (30.9\%) & 537 (35.0\%)\\
 \hline
-\hspace{1em}Gestational age (weeks) & 15.4 (3.2) & 15.4 (3.1)\\
+\hspace{1em}Gestational age at baseline (weeks) & 15.3 (3.2) & 15.5 (3.1)\\
 \hline
 \textbf{Child variables} & \textbf{} & \textbf{}\\
 \hline
 \hspace{1em}Birth weight-for-age z score & -0.8 (1.0) & -0.8 (1.0)\\
 \hline
-\hspace{1em}Exclusive breastfeeding & 576 (35.9\%) & 594 (37.4\%)\\
+\hspace{1em}Exclusive breastfeeding & 550 (36.1\%) & 495 (32.2\%)\\
 \hline
-\textcolor{red}{\hspace{1em}Up-to-date vaccination status} & \textcolor{red}{} & \textcolor{red}{}\\
+\hspace{1em}Up-to-date vaccination status & 137  (9.0\%) & 127  (8.3\%)\\
 \hline
 \end{tabular}
 \end{table}
+
 \begin{table}[H]
 
-\caption{\label{tab:unnamed-chunk-4}Pneumonia case characteristics to be reported}
+\caption{\label{tab:unnamed-chunk-6}Pneumonia case characteristics to be reported}
 \centering
 \begin{tabular}[t]{l|l|l}
 \hline
-  & A & B\\
+  & Control (N = 90) & Intervention (N = 85)\\
 \hline
-International Research Center and randomization stratification &  & \\
+International Research Center &  & \\
 \hline
-\hspace{1em}Strata 1 & 44 (50.6\%) & 38 (30.9\%)\\
+\hspace{1em}Guatemala & 32 (35.6\%) & 38 (44.7\%)\\
 \hline
-\hspace{1em}Strata 2 & 0  (0.0\%) & 1  (0.8\%)\\
+\hspace{1em}India & 6  (6.7\%) & 5  (5.9\%)\\
 \hline
-\hspace{1em}Strata 3 & 1  (1.1\%) & 2  (1.6\%)\\
+\hspace{1em}Peru & 6  (6.7\%) & 7  (8.2\%)\\
 \hline
-\hspace{1em}Strata 4 & 0 (0\%) & 0 (0\%)\\
-\hline
-\hspace{1em}Strata 5 & 0 (0\%) & 0 (0\%)\\
-\hline
-\hspace{1em}Strata 6 & 29 (33.3\%) & 71 (57.7\%)\\
-\hline
-\hspace{1em}Strata 7 & 3  (3.4\%) & 1  (0.8\%)\\
-\hline
-\hspace{1em}Strata 8 & 4  (4.6\%) & 1  (0.8\%)\\
-\hline
-\hspace{1em}Strata 9 & 1  (1.1\%) & 0  (0.0\%)\\
-\hline
-\hspace{1em}Strata 10 & 5  (5.7\%) & 9  (7.3\%)\\
+\hspace{1em}Rwanda & 46 (51.1\%) & 35 (41.2\%)\\
 \hline
 Child’s age (months) &  & \\
 \hline
-\hspace{1em}<2 months & 24 (27.6\%) & 66 (53.7\%)\\
+\hspace{1em}<2 months & 37 (41.1\%) & 39 (45.9\%)\\
 \hline
-\hspace{1em}3-5 months & 19 (21.8\%) & 28 (22.8\%)\\
+\hspace{1em}3-5 months & 25 (27.8\%) & 17 (20.0\%)\\
 \hline
-\hspace{1em}6-11 months & 39 (44.8\%) & 22 (17.9\%)\\
+\hspace{1em}6-11 months & 28 (31.1\%) & 29 (34.1\%)\\
 \hline
 Child sex &  & \\
 \hline
-\hspace{1em}Male & 45 (51.7\%) & 45 (36.6\%)\\
+\hspace{1em}Male & 40 (44.4\%) & 46 (54.1\%)\\
 \hline
-\hspace{1em}Female & 41 (47.1\%) & 78 (63.4\%)\\
+\hspace{1em}Female & 50 (55.6\%) & 39 (45.9\%)\\
 \hline
-Weight (kg) & 6.3 (2.4) & 5.1 (2.1)\\
+Weight (kg) & 5.7 (2.4) & 5.8 (2.3)\\
 \hline
-Severe acute malnutrition & 8  (9.2\%) & 18 (14.6\%)\\
+Severe acute malnutrition & 7  (7.8\%) & 5  (5.9\%)\\
 \hline
-Temperature >38 C & 33 (37.9\%) & 18 (14.6\%)\\
+Up-to-date vaccination status & 7  (7.8\%) & 1  (1.2\%)\\
 \hline
-Average Heart rate & 155.0 (20.7) & 158.0 (15.1)\\
+Temperature >38 C & 33 (36.7\%) & 18 (21.2\%)\\
 \hline
-Average Respiratory rate & 57.7 (14.3) & 62.0 (12.2)\\
+Average Heart rate & 156.4 (19.0) & 153.1 (21.7)\\
 \hline
-Average SpO2 & 88.7 (6.8) & 88.8 (4.8)\\
+Average Respiratory rate & 59.6 (15.4) & 57.9 (12.4)\\
 \hline
-Hypoxemia & 14 (16.1\%) & 14 (11.4\%)\\
+Average SpO2 & 88.5 (7.8) & 89.1 (6.0)\\
 \hline
-Wheeze +/- crackles & 14 (16.1\%) & 19 (15.4\%)\\
+Hypoxemia & 60 (66.7\%) & 60 (70.6\%)\\
 \hline
-At least one respiratory danger sign & 29 (33.3\%) & 28 (22.8\%)\\
+Wheeze +/- crackles & 17 (18.9\%) & 17 (20.0\%)\\
 \hline
-Chest indrawing & 38 (43.7\%) & 59 (48.0\%)\\
+At least one respiratory danger sign & 42 (46.7\%) & 44 (51.8\%)\\
 \hline
-Head nodding & 24 (27.6\%) & 35 (28.5\%)\\
+Chest indrawing & 41 (45.6\%) & 37 (43.5\%)\\
 \hline
-Persistent nasal flaring & 16 (18.4\%) & 12  (9.8\%)\\
+Head nodding & 25 (27.8\%) & 19 (22.4\%)\\
 \hline
-Grunting & 5  (5.7\%) & 7  (5.7\%)\\
+Persistent nasal flaring & 21 (23.3\%) & 12 (14.1\%)\\
 \hline
-Stridor when calm & 6  (6.9\%) & 10  (8.1\%)\\
+Grunting & 5  (5.6\%) & 12 (14.1\%)\\
 \hline
-Tracheal tugging & 33 (37.9\%) & 28 (22.8\%)\\
+Stridor when calm & 7  (7.8\%) & 12 (14.1\%)\\
 \hline
-Intercostal retractions & 20 (23.0\%) & 34 (27.6\%)\\
+Tracheal tugging & 39 (43.3\%) & 22 (25.9\%)\\
 \hline
-Unable to drink or breastfeed, n (\%) & 11 (12.6\%) & 11  (8.9\%)\\
+Intercostal retractions & 22 (24.4\%) & 18 (21.2\%)\\
 \hline
-Vomiting everything, n (\%) & 5  (5.7\%) & 10  (8.1\%)\\
+Unable to drink or breastfeed, n (\%) & 14 (15.6\%) & 10 (11.8\%)\\
 \hline
-Convulsions, n (\%) & 6  (6.9\%) & 2  (1.6\%)\\
+Vomiting everything, n (\%) & 8  (8.9\%) & 7  (8.2\%)\\
 \hline
-Lethargy or unconscious, n (\%) & 10 (11.5\%) & 15 (12.2\%)\\
+Convulsions, n (\%) & 3  (3.3\%) & 5  (5.9\%)\\
+\hline
+Lethargy or unconscious, n (\%) & 12 (13.3\%) & 13 (15.3\%)\\
+\hline
+Pneumonia by Lung Ultrasound , n(\%) & 44 (48.9\%) & 42 (49.4\%)\\
+\hline
+Pneumonia by Chest Xray , n(\%) & 3  (3.3\%) & 1  (1.2\%)\\
 \hline
 \end{tabular}
 \end{table}
 \newpage
 
 \begin{verbatim}
-##              Outcome +    Time at risk        Inc rate *
-## Exposed +           87            1525              57.0
-## Exposed -          123            1540              79.9
-## Total              210            3065              68.5
 ## 
-## Point estimates and 95% CIs:
-## -------------------------------------------------------------------
-## Inc rate ratio                                 0.71 (0.54, 0.95)
-## Attrib rate in the exposed *                   -22.82 (-41.34, -4.30)
-## Attrib fraction in the exposed (%)            -40.00 (-86.42, -5.53)
-## Attrib rate in the population *                -11.35 (-28.24, 5.53)
-## Attrib fraction in the population (%)         -16.57 (-21.50, -11.45)
-## -------------------------------------------------------------------
-##  Wald confidence limits
-##  CI: confidence interval
-##  * Outcomes per 1000 units of population time at risk
+## Call:
+## geeglm(formula = pneumonia ~ s6_arm + factor(tenstrata), family = "poisson", 
+##     data = df.base, offset = (log(fu_day)), id = hhid, corstr = "independence")
+## 
+##  Coefficients:
+##                     Estimate   Std.err    Wald Pr(>|W|)    
+## (Intercept)        -10.02801   0.40980 598.815  < 2e-16 ***
+## s6_arm              -0.03894   0.16033   0.059    0.808    
+## factor(tenstrata)9   0.04545   0.81876   0.003    0.956    
+## factor(tenstrata)8   0.20522   0.57454   0.128    0.721    
+## factor(tenstrata)7  -0.19517   0.60288   0.105    0.746    
+## factor(tenstrata)6   1.77361   0.42602  17.332 3.14e-05 ***
+## factor(tenstrata)5  -0.22074   1.08133   0.042    0.838    
+## factor(tenstrata)3   1.04434   0.70315   2.206    0.137    
+## factor(tenstrata)2  -0.27897   1.08482   0.066    0.797    
+## factor(tenstrata)1   1.92066   0.42461  20.461 6.09e-06 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Correlation structure = independence 
+## Estimated Scale Parameters:
+## 
+##             Estimate Std.err
+## (Intercept)    7.627   89.59
+## Number of clusters:   3000  Maximum cluster size: 4
 \end{verbatim}
 
-\begin{verbatim}
-##           Cases Person-time
-## Exposed      87        1525
-## Unexposed   123        1540
-## Total       210        3065
-\end{verbatim}
-
-\begin{verbatim}
-## 
-##  Incidence rate ratio estimate and its significance probability
-## 
-## data:  87 123 1525 1540
-## p-value = 0.01581
-## 95 percent confidence interval:
-##  0.5427788 0.9399553
-## sample estimates:
-## [1] 0.7142743
-\end{verbatim}
+\begin{table}[H]
+\centering
+\begin{tabular}{l|r|r|r|r|r|r}
+\hline
+term & estimate & std.error & statistic & p.value & conf.low & conf.high\\
+\hline
+(Intercept) & 0.0000 & 0.4098 & 598.8147 & 0.0000 & 0.0000 & 0.0001\\
+\hline
+s6\_arm & 0.9618 & 0.1603 & 0.0590 & 0.8081 & 0.7025 & 1.3169\\
+\hline
+factor(tenstrata)9 & 1.0465 & 0.8188 & 0.0031 & 0.9557 & 0.2103 & 5.2079\\
+\hline
+factor(tenstrata)8 & 1.2278 & 0.5745 & 0.1276 & 0.7209 & 0.3982 & 3.7860\\
+\hline
+factor(tenstrata)7 & 0.8227 & 0.6029 & 0.1048 & 0.7461 & 0.2524 & 2.6817\\
+\hline
+factor(tenstrata)6 & 5.8921 & 0.4260 & 17.3323 & 0.0000 & 2.5565 & 13.5800\\
+\hline
+factor(tenstrata)5 & 0.8019 & 1.0813 & 0.0417 & 0.8382 & 0.0963 & 6.6767\\
+\hline
+factor(tenstrata)3 & 2.8415 & 0.7031 & 2.2059 & 0.1375 & 0.7162 & 11.2739\\
+\hline
+factor(tenstrata)2 & 0.7566 & 1.0848 & 0.0661 & 0.7971 & 0.0902 & 6.3423\\
+\hline
+factor(tenstrata)1 & 6.8255 & 0.4246 & 20.4607 & 0.0000 & 2.9696 & 15.6878\\
+\hline
+\end{tabular}
+\end{table}
 
 \end{document}

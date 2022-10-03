@@ -1,7 +1,7 @@
 ---
 title: "**Intention-to-Treat analysis for stunting in 1-year old children**"
 subtitle: "**Version 1.6**"
-date: March 24, 2022
+date: "`r Sys.Date()`"
 header-includes:
   - \usepackage{float}
 output:
@@ -29,47 +29,239 @@ library(knitr)
 library(kableExtra)
 library(epiR)
 library(fmsb)
+library(lubridate)
+library(readxl)
+library(gee)
+library(geepack)
 
 df.tab <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab.csv")
 df.tab3 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
+
+df.tab <- df.tab %>% 
+  dplyr::filter(!is.na(c30_dob))
+
 ```
 
+
+```{r, include=FALSE}
+df.base <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_baseline_09-20-2022.csv")
+df.nf <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_ITTtrt_20220909_unfmt.csv")
+
+df.tomerge <- df.nf %>% 
+  dplyr::filter(timepoint == "BL") %>% 
+  dplyr::select(hhid, hhid_blinded, s6_arm) %>% 
+  distinct()
+
+df.p <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_Visits.xlsx") %>% 
+  dplyr::left_join(df.tomerge, by = "hhid_blinded")
+
+df.base <- df.base %>% 
+  dplyr::left_join(df.tomerge, by = "hhid_blinded") %>% 
+  dplyr::filter(!is.na(c30_dob))
+
+df.base$week8 <- as.Date(df.base$c30_dob) %m+% weeks(8)
+df.base$week12 <- as.Date(df.base$c30_dob) %m+% weeks(12)
+df.base$week32 <- as.Date(df.base$c30_dob) %m+% weeks(32)
+
+df.base$vaxgroup <- ifelse(df.base$Exit < df.base$week8, "<8w",
+                           ifelse(df.base$Exit >= df.base$week8 & df.base$Exit < df.base$week12, "8-12w",
+                                  ifelse(df.base$Exit >= df.base$week12 & df.base$Exit < df.base$week32, "12-32w",
+                                         ifelse(df.base$Exit > df.base$week32, ">32w", NA))))
+
+sum(is.na(df.base$vaxgroup))
+
+df.vax <- df.nf %>% 
+  dplyr::select(hhid, contains("c42_")) %>% 
+  left_join(df.base[,c("hhid", "irc", "Exit", "OneYear", "c30_dob", "vaxgroup", "week8", "week12", "week32")], by = "hhid") %>% 
+  dplyr::filter(c42_date != "") %>% 
+  dplyr::mutate(c30_dob = as.Date(c30_dob, origin="1970-01-01"))
+
+table(is.na(df.vax$c42_pneumo_time) & is.na(df.vax$c42_penta_time) & is.na(df.vax$c42_measles_time))
+
+df.vax$start1 <- as.Date(df.vax$c30_dob)
+df.vax$start2 <- as.Date(df.vax$c30_dob) %m+% weeks(8)
+df.vax$start3 <- as.Date(df.vax$c30_dob) %m+% weeks(12)
+df.vax$start4 <- as.Date(df.vax$c30_dob) %m+% weeks(32)
+
+df.vax$stop1 <- as.Date(df.vax$c30_dob) %m+% weeks(8) %m-% days(1)
+df.vax$stop2 <- as.Date(df.vax$c30_dob) %m+% weeks(12) %m-% days(1)
+df.vax$stop3 <- as.Date(df.vax$c30_dob) %m+% weeks(32) %m-% days(1)
+df.vax$stop4 <- as.Date(df.vax$c30_dob) %m+% months(13)
+
+df.vax$vax_start <- ifelse(df.vax$vaxgroup == "<8w", as.character(df.vax$start1), 
+                           ifelse(df.vax$vaxgroup == "8-12w", as.character(df.vax$start2),
+                                  ifelse(df.vax$vaxgroup == "12-32w", as.character(df.vax$start3),
+                                         ifelse(df.vax$vaxgroup == ">32w", as.character(df.vax$start4), NA))))
+
+df.vax$vax_stop <- ifelse(df.vax$vaxgroup == "<8w", as.character(df.vax$stop1), 
+                           ifelse(df.vax$vaxgroup == "8-12w", as.character(df.vax$stop2),
+                                  ifelse(df.vax$vaxgroup == "12-32w", as.character(df.vax$stop3),
+                                         ifelse(df.vax$vaxgroup == ">32w", as.character(df.vax$stop4), NA))))
+
+df.vax2 <- df.vax %>% 
+  dplyr::filter(as.Date(c42_date) >= as.Date(vax_start) & as.Date(c42_date) <= as.Date(vax_stop)) %>% 
+  dplyr::mutate(c42_pneumo_time = ifelse(irc == "India", 3, c42_pneumo_time),
+                c42_pneumo_time = ifelse(c42_pneumo_time == 888, NA, c42_pneumo_time),
+                c42_penta_time = ifelse(c42_penta_time == 888, NA, c42_penta_time),
+                c42_measles_time = ifelse(c42_measles_time == 888, NA, c42_measles_time)) %>% 
+  dplyr::select(hhid, irc, c42_date, c30_dob, vaxgroup, vax_start, vax_stop, c42_pneumo_time, c42_penta_time, c42_measles_time) %>% 
+  dplyr::distinct()
+
+
+df.vax2$vax_u2d <- ifelse(df.vax2$vaxgroup == "<8w" & df.vax2$c42_pneumo_time >= 1 & df.vax2$c42_penta_time >=1, 1,
+                         ifelse(df.vax2$vaxgroup == "8-12w" & df.vax2$c42_pneumo_time >= 2 & df.vax2$c42_penta_time >=2, 1,
+                                ifelse(df.vax2$vaxgroup == "12-32w" & df.vax2$c42_pneumo_time >= 3 & df.vax2$c42_penta_time >=3, 1,
+                                       ifelse(df.vax2$vaxgroup == ">32w" &
+                                                df.vax2$c42_pneumo_time >= 3 &
+                                                df.vax2$c42_penta_time >= 3 &
+                                                df.vax2$c42_measles_time >= 1, 1, 0))))
+
+df.vax2 <- df.vax2 %>% 
+  group_by(hhid) %>% 
+  arrange(vax_u2d) %>% 
+  dplyr::distinct(hhid, .keep_all = TRUE)
+
+df.vax3 <- df.vax %>% 
+  dplyr::right_join(df.p, by = "hhid") %>% 
+  dplyr::filter(Pneumonia == 1) %>% 
+  dplyr::filter(as.Date(Visit_date_cal) >= as.Date(vax_start) & as.Date(c42_date) <= as.Date(vax_stop)) %>% 
+  dplyr::select(hhid, Visit_date_cal, c42_date, vaxgroup, vax_start, vax_stop, c42_pneumo_time, c42_penta_time, c42_measles_time) 
+  
+  
+df.vax3$vax_u2d <- ifelse(df.vax3$vaxgroup == "<8w" & df.vax3$c42_pneumo_time >= 1 & df.vax3$c42_penta_time >=1, 1,
+                          ifelse(df.vax3$vaxgroup == "8-12w" & df.vax3 $c42_pneumo_time >= 2 & df.vax3 $c42_penta_time >=2, 1,
+                                 ifelse(df.vax3$vaxgroup == "12-32w" & df.vax3 $c42_pneumo_time >= 3 & df.vax3 $c42_penta_time >=3, 1,
+                                        ifelse(df.vax3$vaxgroup == ">32w" &
+                                                 df.vax3 $c42_pneumo_time >= 3 &
+                                                 df.vax3 $c42_penta_time >= 3 &
+                                                 df.vax3 $c42_measles_time >= 1, 1, 0))))
+  
+
+df.vax3 <- df.vax3 %>% 
+  group_by(hhid) %>% 
+  arrange(vax_u2d) %>% 
+  dplyr::distinct(hhid, .keep_all = TRUE)
+
+df.tab <- left_join(df.tab, df.vax2[,c("hhid", "vax_u2d")], by = "hhid")
+df.tab3 <- left_join(df.tab3, df.vax3[,c("hhid", "vax_u2d")], by = "hhid")
+
+```
+
+
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-tab1 <- table1x(df.tab, c("factor(tenstrata)",
+df.tab$fies_cat <- ifelse(df.tab$fies_cat == 0, "Food secure",
+                          ifelse(df.tab$fies_cat == 1, "Mild",
+                                 ifelse(df.tab$fies_cat == 2, "Moderate/Sereve", NA)))
+
+
+tab1 <- table1x(df.tab, c("factor(irc)",
                           "GAweeks_AT_INTERVENTION",
                           "factor(c30_sex)",
                           "m13_child",
                           "factor(h42_smoke)",
-                          "factor(fies_cat)"), "factor(trt_scrambled)")
+                          "factor(fies_cat)"),
+                "factor(s6_arm)")
 
 tab1 <- tab1[,c(1,2)]
 tab1$order <- c(1:nrow(tab1))
 
-tab1 <- rowinsert(locations = c(1, 12, 19),
-                  rownm = c("International Research Center and randomization stratification",
+tab1 <- rowinsert(locations = which(rownames(tab1) %in%
+                                      c("factor(irc) (Guatemala)",
+                                        "factor(c30_sex) (1)",
+                                        "factor(fies_cat) (Food secure)")),
+                  rownm = c("International Research Center",
                             "Child sex",
                             "Household food insecurity score"),
                   tab = tab1)
 
-#rownames(tab1)[which(rownames(tab1) == "factor(c30_sex) (NA)")] <- "factor(c30_sex) (undetermined)"
-
 tab1 <- tab1[str_detect(rownames(tab1), "\\b(0)\\b") == "FALSE" &
                str_detect(rownames(tab1), "\\b(NA)\\b") == "FALSE",]
 
-rownames(tab1) <- c("International Research Center and randomization stratification",
-                    paste0("Strata ", c(1:10)),
+tab1$order <- NULL
+
+tab1 <- rbind(tab1,
+              c(
+                paste0(
+                round(mean(df.tab$pca[df.tab$s6_arm == 0]), 3), " (",
+                round(sd(df.tab$pca[df.tab$s6_arm == 0]), 3), ")"
+                ),
+                paste0(
+                round(mean(df.tab$pca[df.tab$s6_arm == 1]), 3), " (",
+                round(sd(df.tab$pca[df.tab$s6_arm == 1]), 3), ")"
+                )
+                )
+              )
+tab1$`0` <- ifelse(tab1$`0` == "NaN ( NA)", "", tab1$`0`)
+
+rownames(tab1) <- c("International Research Center",
+                    "Guatemala", "India", "Peru", "Rwanda",
                     "Gestational age (weeks) at intervention",
                     "Child sex", "Male", "Female", "Number of siblings in the house", 
                     "Second-hand smoking", "Household food insecurity score",
-                    "Mild", "Moderate", "Sereve")
+                    "Food secure", "Mild", "Moderate/Sereve", "Socio-economic Status")
 
-tab1$order <- NULL
 tab1 <- tab1 %>% 
-  kable(caption = "Baseline characteristics to be reported of liveborn children") %>% 
+  kable(caption = "Baseline characteristics to be reported of liveborn children",
+        col.names = c(paste0("Control (N = ", table(df.tab$s6_arm)[1], ")"),
+                      paste0("Intervention (N = ", table(df.tab$s6_arm)[2], ")"))) %>% 
     kableExtra::kable_classic_2(latex_options = "HOLD_position") %>%
-  add_indent(c(2:11,14,15,19:21), level_of_indent = 1)
+  add_indent(c(2:5,8,9,13:15), level_of_indent = 1)
 
 tab1
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+misstab <- function(data, varlist, rownm = NULL){
+  
+ df.miss <- data[,varlist] 
+  
+ df.miss <- df.miss %>%
+  gather(key = "Variables", value = "val") %>%
+  mutate(isna = is.na(val)) %>%
+  group_by(Variables) %>%
+  mutate(Total = n()) %>%
+  group_by(Variables, Total, isna) %>%
+  dplyr::filter(isna == "TRUE") %>%
+  summarise(Missing = n()) %>%
+  dplyr::select(-isna) %>% 
+  mutate(Missing = paste0(Missing, " (",sprintf("%3.1f", round((Missing/Total)*100, 1)), "%)")) 
+ 
+if(is.null(rownm) == "FALSE"){
+  df.miss$Variables <- rownm
+}
+ 
+ tab.miss <- df.miss %>%
+   kable() %>% 
+   kableExtra::kable_classic_2(latex_options = "HOLD_position")
+ 
+ return(list(df.miss, tab.miss))
+}
+
+misstab( 
+data = df.tab,
+varlist = c("irc",
+            "GAweeks_AT_INTERVENTION",
+            "c30_sex",
+            "m13_child",
+            "h42_smoke",
+            "fies_cat",
+            "MAyears_at_baseline",
+            "m10_educ_R",
+            "GAweeks_AT_baseline",
+            "WeightZScore",
+            "ebf",
+            "vax_u2d"),
+
+rownm = c("Exclusive breastfeeding",
+          "Household food insecurity score",
+          "Gestational age (weeks) at intervention",
+          "Second-hand smoking",
+          "Number of siblings in the house",
+          "Up-to-date vaccination status",
+          "Birth weight-for-age z score")
+)[[2]]
 
 ```
 
@@ -78,17 +270,20 @@ tab2 <- table1x(df.tab, c("MAyears_at_baseline",
                           "factor(m10_educ_R)",
                           "GAweeks_AT_baseline",
                           "WeightZScore",
-                          "factor(ebf)"),
-                "factor(trt_scrambled)")
+                          "factor(ebf)",
+                          "factor(vax_u2d)"),
+                "factor(s6_arm)")
 
 tab2 <- tab2[,c(1,2)]
 tab2$order <- c(1:nrow(tab2))
 
-tab2 <- rowinsert(locations = c(1,2,7,10),
+tab2 <- rowinsert(locations = which(rownames(tab2) %in%
+                                      c("MAyears_at_baseline mean(SD)",
+                                        "factor(m10_educ_R) (1)",
+                                        "WeightZScore mean(SD)")),
                   rownm = c("Maternal variables",
                             "Mother’s highest level of education completed",
-                            "Child variables",
-                            "Up-to-date vaccination status"),
+                            "Child variables"),
                   tab = tab2)
 
 tab2 <- tab2[str_detect(rownames(tab2), "\\b(0)\\b") == "FALSE" &
@@ -100,7 +295,7 @@ rownames(tab2) <- c("Maternal variables",
                     "No formal education or some primary school (1 or 2)",
                     "Primary school or some secondary school incomplete (3 or 4)",
                     "Secondary school or vocational or university/college (5 or 6 or 7)",
-                    "Gestational age (weeks)",
+                    "Gestational age at baseline (weeks)",
                     "Child variables",
                     "Birth weight-for-age z score",
                     "Exclusive breastfeeding",
@@ -108,30 +303,35 @@ rownames(tab2) <- c("Maternal variables",
 
 tab2$order <- NULL
 tab2 <- tab2 %>%
-  kable(caption = "Other key characteristics of study population of liveborn children") %>%
+  kable(caption = "Other key characteristics of study population of liveborn children",
+        col.names = c(paste0("Control (N = ", table(df.tab$s6_arm)[1], ")"),
+                      paste0("Intervention (N = ", table(df.tab$s6_arm)[2], ")"))) %>%
   kableExtra::kable_classic_2(latex_options = "HOLD_position") %>%
   add_indent(c(2,3,7,9:11), level_of_indent = 1) %>%
   add_indent(c(4:6), level_of_indent = 2) %>% 
-  row_spec(c(1,8), bold = TRUE) %>% 
-  row_spec(c(11), color = "red")
+  row_spec(c(1,8), bold = TRUE) 
 
 tab2
 
 ```
+
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
+df.tab3$cxr_dx <- ifelse(is.na(df.tab3$cxr_dx), 0, df.tab3$cxr_dx)
+
 tab3 <- table1x(df.tab3,
-                c("factor(tenstrata)",
+                c("factor(irc)",
                 "factor(agecat)",
                 "factor(c30_sex)",
                 "wt",
                 "factor(malnutrition)",
+                "factor(vax_u2d)",
                 "factor(fever)",
                 "c36a_hr",
                 "rr",
                 "spo2",
                 "factor(hypox)",
                 "factor(wheez)",
-                #"factor(danger)", double-check danger <<<<<<<<<<<<<<<<<
+                "factor(danger)",
                 "factor(indraw)",
                 "factor(nodding)",
                 "factor(flaring)",
@@ -142,87 +342,194 @@ tab3 <- table1x(df.tab3,
                 "factor(drink)",
                 "factor(vomit)",
                 "factor(convulsion)",
-                "factor(unconscious)"
+                "factor(unconscious)",
+                "factor(lus_dx)",
+                "factor(cxr_dx)"
                 ),
-                "factor(trt_scrambled)")
+                "factor(s6_arm)")
 
 tab3 <- tab3[,c(1,2)]
-
-tab3 <- rowinsert(locations = c(4),
-                  rownm = c("factor(tenstrata) (4)"),
-                  tab = tab3,
-                  rowdata = c("0 (0%)"))
-
-
-tab3 <- rowinsert(locations = c(5),
-                  rownm = c("factor(tenstrata) (5)"),
-                  tab = tab3,
-                  rowdata = c("0 (0%)"))
 
 tab3 <- tab3[str_detect(rownames(tab3), "\\b(0)\\b") == "FALSE" &
                str_detect(rownames(tab3), "\\b(NA)\\b") == "FALSE",]
 
-tab3$order <- c(1:nrow(tab3))
-
-tab3 <- rowinsert(locations = c(1,11,14),
-                  rownm = c("tenstrata", "agecat", "sex"),
+tab3 <- rowinsert(locations = which(rownames(tab3) %in%
+                                      c("factor(irc) (Guatemala)",
+                                        "factor(agecat) (<2m)",
+                                        "factor(c30_sex) (1)")),
+                  rownm = c("irc", "agecat", "sex"),
                   tab = tab3)
 
+
+tab3$order <- c(1:nrow(tab3))
 tab3$order <- NULL
 
-# rownames(tab3) <- c("International Research Center and randomization stratification",
-#                     paste0("Strata ", c(1:10)), "Child’s age (months)",
-#                     "<2 months", "3-5 months", "6-11 months", "Child sex", "Male", "Female",
-#                     "Weight (kg)", "Severe acute malnutrition", "Temperature >38 C", 
-#                     "Average Heart rate", "Average Respiratory rate", "Average SpO2", "Hypoxemia",
-#                     "Wheeze +/- crackles", "At least one respiratory danger sign", "Chest indrawing",
-#                     "Head nodding", "Persistent nasal flaring",
-#                     "Grunting", "Stridor when calm", "Tracheal tugging", "Intercostal retractions",
-#                     "Unable to drink or breastfeed, n (%)", "Vomiting everything, n (%)", 
-#                     "Convulsions, n (%)", "Lethargy or unconscious, n (%)")
+rownames(tab3) <- c("International Research Center", "Guatemala", "India", "Peru", "Rwanda",
+                    "Child’s age (months)", "<2 months", "3-5 months", "6-11 months",
+                    "Child sex", "Male", "Female",
+                    "Weight (kg)", "Severe acute malnutrition",
+                    "Up-to-date vaccination status",
+                    "Temperature >38 C",
+                    "Average Heart rate", "Average Respiratory rate", "Average SpO2", "Hypoxemia",
+                    "Wheeze +/- crackles",
+                    "At least one respiratory danger sign",
+                    "Chest indrawing",
+                    "Head nodding", "Persistent nasal flaring",
+                    "Grunting", "Stridor when calm", "Tracheal tugging", "Intercostal retractions",
+                    "Unable to drink or breastfeed, n (%)", "Vomiting everything, n (%)",
+                    "Convulsions, n (%)",
+                    "Lethargy or unconscious, n (%)",
+                    "Pneumonia by Lung Ultrasound , n(%)",
+                    "Pneumonia by Chest Xray , n(%)")
 
-# use colnames after fixing danger 
-
-tab3 <- tab3 %>% 
-  kable(caption = "Pneumonia case characteristics to be reported") %>% 
+tab3 <- tab3 %>%
+  kable(caption = "Pneumonia case characteristics to be reported",
+        col.names = c(paste0("Control (N = ", table(df.tab3$s6_arm)[1], ")"),
+                      paste0("Intervention (N = ", table(df.tab3$s6_arm)[2], ")"))) %>%
     kableExtra::kable_classic_2(latex_options = "HOLD_position") %>%
-  add_indent(c(2:11, 13:15, 17:18), level_of_indent = 1)
+  add_indent(c(2:5, 7:9, 11:12), level_of_indent = 1)
 
 tab3
 ```
 \newpage
 
+```{r, include=FALSE}
+
+df.base <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_baseline_09-20-2022.csv")
+df.p <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_Visits.xlsx")
+
+df.base <- df.base %>% 
+  dplyr::left_join(df.tomerge, by = "hhid_blinded")
+
+df.p <- df.p %>% 
+  dplyr::left_join(df.tomerge, by = "hhid_blinded")
+
+df.base$Exit <- as.Date(df.base$Exit, format = "%Y-%m-%d")
+df.base$c30_dob <- as.Date(df.base$c30_dob, format = "%Y-%m-%d")
+
+# Pneumonia 
+df.p <- df.p %>% 
+  dplyr::filter(Pneumonia == 1) %>% 
+  dplyr::select(hhid, Pneumonia, Visit_date_cal) %>% 
+  distinct()
+
+# Pneumonia episodes
+df.episodes <- df.p %>% 
+  dplyr::group_by(hhid) %>% 
+  dplyr::mutate(episodes = n()) %>% 
+  dplyr::select(- Visit_date_cal, -Pneumonia) %>% 
+  distinct()
+
+df.base <- df.base %>% 
+  dplyr::full_join(df.p, by = 'hhid') %>% 
+  distinct() %>% 
+  dplyr::left_join(df.episodes, by = "hhid") %>% 
+  dplyr::mutate(timediff = as.numeric(difftime(Exit, c30_dob, units = "days")))
+
+df.base$episodes <- ifelse(is.na(df.base$episodes), 0, df.base$episodes)
+
+df.base$fu_day <- ifelse(df.base$episodes > 0, (df.base$timediff+1)/df.base$episodes,
+                         ifelse(df.base$episodes == 0, df.base$timediff+1, NA))
+
+df.base$hhid <- factor(df.base$hhid)
+
+###############
+###   IRR   ###
+###############
+#365.25
+
+a <- sum(df.base$fu_day[df.base$s6_arm == 1], na.rm = TRUE)/365.25
+b <- sum(df.base$fu_day[df.base$s6_arm == 0], na.rm = TRUE)/365.25
+
+dat.py <- c(85,a, 90,b)
+
+dat.py <- epi.2by2(dat = dat.py, method = "cohort.time", digits = 2,
+   conf.level = 0.95, units = 100, interpret = FALSE, outcome = "as.columns")
+
+summary(dat.py)$massoc.detail$ARate.strata.wald
+
+dat.py
+
+round(summary(dat.py)$massoc.detail$IRR.strata.wald, digits = 2)
+
+
+#####################################################################
+
+df.base <- df.base %>% 
+  dplyr::select(hhid, s6_arm, tenstrata, c30_dob, Exit, timediff, episodes, fu_day, Pneumonia) %>% 
+  dplyr::mutate(Pneumonia = ifelse(is.na(Pneumonia), 0, Pneumonia)) %>%  
+  dplyr::filter(!(tenstrata == 4)) %>% 
+  dplyr::mutate(episodes_divd = ifelse(episodes %in% c(2:4), 1, episodes)) %>% 
+  dplyr::rename(pneumonia = Pneumonia)
+
+
+df.base$tenstrata <- factor(df.base$tenstrata,
+                            levels = c(10, 9, 8, 7, 6, 5, 3, 2, 1))
+```
+
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-df.tab <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab.csv")
-df.tab3 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
 
-df.tab <- left_join(df.tab, df.tab3[,c("hhid_blinded", "pneumonia")], by = "hhid_blinded")
+fit_gee <- geeglm(pneumonia~ s6_arm + factor(tenstrata),
+              offset = (log(fu_day)),
+               data = df.base, 
+               id = hhid, 
+               family = 'poisson',
+               corstr = "independence")
 
-tab4 <- data.frame(matrix(ncol = 7, nrow = 2))
-tab4[,1] <- c("Group 1 (control), N", "Group 2 (intervention), N")
-tab4[,2] <- unlist(table(df.tab3$trt_scrambled, df.tab3$pneumonia))
+summary(fit_gee)
 
-colnames(tab4) <- c("", "HAPIN pneumonia case", "Person-time in years of life", "Incidence rate",
-                    "Incidence rate ratio", "95% CI", "P-value")
+fit.tab <- tidy(fit_gee, conf.int = TRUE, exponentiate = TRUE)
 
-
-tab4[1,3] <- round(sum(df.tab$pt[df.tab$trt_scrambled == "A"], na.rm = TRUE)/365.25)
-tab4[2,3] <- round(sum(df.tab$pt[df.tab$trt_scrambled == "B"], na.rm = TRUE)/365.25)
-
-tab4[[4]] <- tab4[[2]] / tab4[[3]]
-tab4[1,c(5:7)] <- c("Reference", "Reference", "")
-tab4[2,5] <- round(tab4[1,4] / tab4[2,4], 2)
-tab4[[4]] <- round(tab4[[4]], 2)
+fit.tab %>%
+  kable() %>%
+  kable_classic_2(latex_options = "HOLD_position")
 
 
-irr.tab <- 
-epi.2by2(dat = c(87, 1525, 123, 1540), method = "cohort.time", digits = 2, 
-   conf.level = 0.95, units = 1000, interpret = FALSE, 
-   outcome = "as.columns")
+# "", 1,
+# "Azangaro", 2,
+# "Chucuito/Juli", 3,
+# "El Collao", 4,
+# "Huancane", 5,
+# "JALAPA", 6,
+# "Nagapattinam", 7,
+# "Puno", 8,
+# "San Roman", 9,
+# "Villupuram", 10, NA))))))))))
 
-irr.tab
 
-rateratio(87, 123, 1525, 1540) # .>>.>>>>>>>>>>>>>>>>>>>>>>>>>>>>>. changed???
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# df.tab <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab.csv")
+# df.tab3 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
+# 
+# df.tab <- left_join(df.tab, df.tab3[,c("hhid", "pneumonia")], by = "hhid")
+# 
+# tab4 <- data.frame(matrix(ncol = 7, nrow = 2))
+# tab4[,1] <- c("Group 1 (control), N", "Group 2 (intervention), N")
+# tab4[,2] <- unlist(table(df.tab3$s6_arm, df.tab3$pneumonia))
+# 
+# colnames(tab4) <- c("", "HAPIN pneumonia case", "Person-time in years of life", "Incidence rate",
+#                     "Incidence rate ratio", "95% CI", "P-value")
+# 
+# 
+# tab4[1,3] <- round(sum(df.tab$pt[df.tab$s6_arm == 0], na.rm = TRUE)/365.25)
+# tab4[2,3] <- round(sum(df.tab$pt[df.tab$s6_arm == 1], na.rm = TRUE)/365.25)
+# 
+# tab4[[4]] <- tab4[[2]] / tab4[[3]]
+# tab4[1,c(5:7)] <- c("Reference", "Reference", "")
+# tab4[2,5] <- round(tab4[1,4] / tab4[2,4], 2)
+# tab4[[4]] <- round(tab4[[4]], 2)
+# 
+# 
+# irr.tab <- 
+# epi.2by2(dat = c(87, 1525, 123, 1540), method = "cohort.time", digits = 2, 
+#    conf.level = 0.95, units = 1000, interpret = FALSE, 
+#    outcome = "as.columns")
+# 
+# irr.tab
+# 
+# rateratio(87, 123, 1525, 1540) # .>>.>>>>>>>>>>>>>>>>>>>>>>>>>>>>>. changed???
 
 #tab4 %>% kable()
 
