@@ -92,9 +92,6 @@ df.ptm <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_pneu
 df.ptm <- df.ptm %>% 
   dplyr::left_join(df.tomerge, by = "hhid_blinded")
 
-
-View(df.ptm)
-
 sum(df.pt$pt)
 sum(df.ptl$TotalPersonDays)
 sum(df.ptm$final_pneupersontime)
@@ -278,18 +275,29 @@ for(ii in c("c36_diff_breath", "c36_fastbreath", "c36_nodding", "c36_flaring", "
   print(table(df.c36[[ii]]))
 }
 
+
 # Dyspnea
 df.c36$c36_dyspnea <- ifelse(df.c36$c36_diff_breath == 1 |
                                df.c36$c36_fastbreath == 1 |
-                               df.c36$c36_nodding == 1 |
-                               df.c36$c36_flaring == 1 |
-                               df.c36$c36_grunt == 1 |
-                               df.c36$c36_wheez == 1 |
-                               df.c36$c36_stridor == 1 |
-                               df.c36$c36_tugging == 1 |
-                               df.c36$c36_indraw == 1 |
-                               df.c36$c36_s_indraw == 1 |
-                               df.c36$c36_retraction == 1, 1, 0)
+                               df.c36$c36_nodding == 1 | 
+                               df.c36$c36_flaring == 1 | 
+                               df.c36$c36_grunt == 1 | 
+                               df.c36$c36_wheez == 1 | 
+                               df.c36$c36_stridor == 1 | 
+                               df.c36$c36_tugging == 1 | 
+                               df.c36$c36_indraw == 1 | 
+                               df.c36$c36_s_indraw == 1 | 
+                               df.c36$c36_retraction == 1, 1, 0) 
+
+df.c36$c36_respdanger <- ifelse(df.c36$c36_nodding == 1 | 
+                               df.c36$c36_flaring == 1 | 
+                               df.c36$c36_grunt == 1 | 
+                               df.c36$c36_wheez == 1 | 
+                               df.c36$c36_stridor == 1 | 
+                               df.c36$c36_tugging == 1 | 
+                               df.c36$c36_indraw == 1 | 
+                               df.c36$c36_s_indraw == 1 | 
+                               df.c36$c36_retraction == 1, 1, 0) 
 
 table(df.c36$c36_dyspnea)
 
@@ -309,9 +317,20 @@ df.c36$c36_danger <- ifelse(df.c36$c36_drink == 1 |
                           (df.c36$c36_s_indraw == 1 & df.c36$c36_age < 2) |
                           (df.c36$c36_grunt == 1 & df.c36$c36_age < 2), 1, 0)
 
+df.c36$c36_neodanger <- ifelse((df.c36$c36_feed == 1 & df.c36$c36_age < 2) |
+                              (df.c36$c36_move == 1 & df.c36$c36_age < 2) |
+                              (df.c36$c36_s_indraw == 1 & df.c36$c36_age < 2) |
+                              (df.c36$c36_grunt == 1 & df.c36$c36_age < 2), 1, 0)
+  
 
 table(df.c36$c36_danger)
 table(df.c36$c36_malnutrition)
+
+df.c36$c36_feed2m <- ifelse((df.c36$c36_feed == 1 & df.c36$c36_age < 2), 1, 0)
+df.c36$c36_move2m <- ifelse((df.c36$c36_move == 1 & df.c36$c36_age < 2), 1, 0)
+df.c36$c36_sindraw2m <- ifelse((df.c36$c36_s_indraw == 1 & df.c36$c36_age < 2), 1, 0)
+df.c36$c36_grunt2m <- ifelse((df.c36$c36_grunt == 1 & df.c36$c36_age < 2), 1, 0)
+
 
 df.c36$c36_wt <- ifelse(df.c36$c36_cloth == 2, df.c36$c36_cloth_wt - df.c36$c36_wt, df.c36$c36_wt)
 df.c36$c36_wt <- ifelse(df.c36$c36_wt < 0, NA,
@@ -364,6 +383,16 @@ df.c36a$c36a_dyspnea <- ifelse(df.c36a$c36a_diff_breath == 1 |
                                  df.c36a$c36a_s_indraw == 1 |
                                  df.c36a$c36a_retraction == 1, 1, 0)
 
+df.c36a$c36a_respdanger <- ifelse(df.c36a$c36a_nodding == 1 |
+                                 df.c36a$c36a_flaring == 1 |
+                                 df.c36a$c36a_grunt == 1 |
+                                 df.c36a$c36a_wheez == 1 |
+                                 df.c36a$c36a_stridor == 1 |
+                                 df.c36a$c36a_tugging == 1 |
+                                 df.c36a$c36a_indraw == 1 |
+                                 df.c36a$c36a_s_indraw == 1 |
+                                 df.c36a$c36a_retraction == 1, 1, 0)
+
 table(df.c36a$c36a_dyspnea)
 
 
@@ -387,6 +416,17 @@ df.c36a$c36a_danger <- ifelse(df.c36a$c36a_drink == 1 |
                                 (df.c36a$c36a_grunt == 1 & df.c36a$c36a_age < 2), 1, 0)
 
 table(df.c36a$c36a_danger)
+
+df.c36a$c36a_neodanger <- ifelse((df.c36a$c36a_feed == 1 & df.c36a$c36a_age < 2) |
+                                (df.c36a$c36a_move == 1 & df.c36a$c36a_age < 2) |
+                                (df.c36a$c36a_s_indraw == 1 & df.c36a$c36a_age < 2) |
+                                (df.c36a$c36a_grunt == 1 & df.c36a$c36a_age < 2), 1, 0)
+
+df.c36a$c36a_feed2m <- ifelse((df.c36a$c36a_feed == 1 & df.c36a$c36a_age < 2), 1, 0)
+df.c36a$c36a_move2m <- ifelse((df.c36a$c36a_move == 1 & df.c36a$c36a_age < 2), 1, 0)
+df.c36a$c36a_sindraw2m <- ifelse((df.c36a$c36a_s_indraw == 1 & df.c36a$c36a_age < 2), 1, 0)
+df.c36a$c36a_grunt2m <- ifelse((df.c36a$c36a_grunt == 1 & df.c36a$c36a_age < 2), 1, 0)
+
 
 df.c36a$c36a_wt <- ifelse(df.c36a$c36a_cloth == 2, df.c36a$c36a_cloth_wt - df.c36a$c36a_wt, df.c36a$c36a_wt)
 df.c36a$c36a_wt <- ifelse(df.c36a$c36a_wt < 0, NA,
@@ -651,7 +691,16 @@ df.c36_v <- df.c36 %>%
                 c36_drink,
                 c36_vomit,
                 c36_convulsion,
-                c36_unconscious) %>%
+                c36_unconscious,
+                c36_respdanger,
+                c36_neodanger,
+                c36_feed2m,
+                c36_move2m,
+                c36_sindraw2m,
+                c36_grunt2m,
+                c36_after,
+                c36_oxy_supplem,
+                c36_oxy_route) %>%
   dplyr::arrange(hhid, c36_date) %>%
   dplyr::rename(date = c36_date,
                 wt = c36_wt) %>%
@@ -672,7 +721,16 @@ df.c36a_v <- df.c36a %>%
                 c36a_drink,
                 c36a_vomit,
                 c36a_convulsion,
-                c36a_unconscious) %>%
+                c36a_unconscious,
+                c36a_respdanger,
+                c36a_neodanger,
+                c36a_feed2m,
+                c36a_move2m,
+                c36a_sindraw2m,
+                c36a_grunt2m,
+                c36a_after,
+                c36a_oxy_supplem,
+                c36a_oxy_route) %>%
   dplyr::arrange(hhid, c36a_h_date) %>%
   dplyr::rename(date = c36a_h_date,
                 wt = c36a_wt) %>%
@@ -732,18 +790,21 @@ dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid", "date", "form", "wt")) %>%
 
 
 df.c40.dl <- df.c40 %>% 
-  dplyr::select(hhid, c40_date_arrive, c40_adcare) %>% 
+  dplyr::select(hhid, c40_date_arrive, c40_adcare, c40_oxygen, c40_oxygen_2, contains("c40_receive")) %>% 
   dplyr::rename(date = c40_date_arrive) %>% 
   dplyr::filter(c40_adcare == 1)
 
 df.c41.dl <- df.c41 %>% 
-  dplyr::select(hhid, c41_date_admit, c41_adcare) %>% 
-  dplyr::rename(date = c41_date_admit) %>% 
+  dplyr::select(hhid, c41_date_admit, c41_adcare, c41_oxygen_supplement, c41_oxygen_2_supplement,
+                c41_oxygen_positive, c41_oxygen_2_positive,
+                c41_oxygen_mechanical, c41_oxygen_2_mechanical) %>% 
+  dplyr::mutate(date = c41_date_admit) %>% 
   dplyr::filter(c41_adcare == 1)
 
 dl <- dl %>% 
   dplyr::full_join(df.c40.dl, by = c("hhid", "date")) %>% 
   dplyr::full_join(df.c41.dl, by = c("hhid", "date"))
+
 
 # dl <- dl %>%
 #   dplyr::filter(hhid == "Pneumoniai_3055")
@@ -789,11 +850,72 @@ dl$spo2 <- ifelse(is.na(dl$spo2), dl$c40_oxym, dl$spo2)
 dl$hypox <- fun.combine("hypox")
 dl$hypox <- ifelse(dl$c40_oxym <= 86 & !is.na(dl$c40_oxym), 1, dl$hypox)
 
-dl$wheez <- ifelse(dl$c36_wheez == 1 | dl$c36a_wheez == 1 |dl$c36a_wheez_2 == 1, 1, 0)
+dl$wheezcrack <- ifelse(dl$c36_wheez == 1 | dl$c36a_wheez == 1 |dl$c36a_wheez_2 == 1, 1, 0)
+dl$wheezcrack <- replace(dl$wheezcrack, is.na(dl$wheezcrack), 0)
+
+dl$wheez <- ifelse(dl$c36_wheez == 1 | dl$c36a_wheez == 1, 1, 0)
 dl$wheez <- replace(dl$wheez, is.na(dl$wheez), 0)
 
-dl$fever <- ifelse(dl$c36_temp > 38 |dl$c36a_temp > 38 | dl$c40_temp > 38, 1, 0)
+dl$fever <- ifelse(dl$c36_temp >= 38 |dl$c36a_temp >= 38 | dl$c40_temp >= 37.5, 1, 0)
 dl$fever <- replace(dl$fever, is.na(dl$fever), 0)
+
+dl$hospitalized <- 0
+dl$hospitalized <- replace(dl$hospitalized, dl$c36_after == 2, 1)
+dl$hospitalized <- replace(dl$hospitalized, dl$c36a_after == 2, 1)
+dl$hospitalized <- replace(dl$hospitalized, !is.na(dl$c40_date_arrive), 1)
+dl$hospitalized <- replace(dl$hospitalized, !is.na(dl$c41_date_admit), 1)
+
+# Oxygen treatment
+dl$oxy_treat <- 0
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c36_oxy_supplem == 1, 1)
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c36_oxy_route == 1, 1)
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c36a_oxy_supplem == 1, 1)
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c36a_oxy_route == 1, 1)
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_oxygen == 1, 1)
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_oxygen_2 == 1, 1)
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive == 1, 1)
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_new1 == 1, 1)
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_2 == 1, 1)
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_new2 == 1, 1)
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_3 == 1, 1)
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_new3 == 1, 1)
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c41_oxygen_supplement== 1, 1)
+dl$oxy_treat <- replace(dl$oxy_treat, dl$c41_oxygen_2_supplement  == 1, 1)
+table(dl$oxy_treat)
+
+# Advanced respiratory care
+dl$adv_respcare <- 0
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c36_oxy_route == 2, 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c36a_oxy_route == 2, 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c40_oxygen == 2, 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c40_oxygen_2 %in% c(2,3,4), 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c40_receive == 2, 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c40_receive_new1 %in% c(2,3,4), 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c40_receive_2 == 2, 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c40_receive_new2 %in% c(2,3,4), 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c40_receive_3 == 2, 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c40_receive_new3 %in% c(2,3,4), 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c41_oxygen_positive == 1, 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c41_oxygen_mechanical == 1, 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c41_oxygen_2_positive == 1, 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c41_oxygen_2_mechanical == 1, 1)
+table(dl$adv_respcare)
+
+##########################################
+##########################################
+dl <- left_join(dl, df.nf[,c("hhid", "e2_participant", "e2_type")], by = "hhid")
+
+dl$death <- ifelse((dl$e2_participant == 3 &
+                     dl$e2_type == 1 &
+                     (difftime(as.Date(dl$e2_death_date), as.Date(dl$date), units = "days") < 30)) |
+                     dl$pcvaCoD == "Probable pneumonia", 1, 0)
+
+dl$death <- ifelse(is.na(dl$death), 0, dl$death)
+
+table(dl$death)
+
+##########################################
+##########################################
 
 for(vv in c("danger",
             "indraw",
@@ -806,7 +928,13 @@ for(vv in c("danger",
             "drink",
             "vomit",
             "convulsion",
-            "unconscious")){
+            "unconscious",
+            "respdanger",
+            "neodanger",
+            "feed2m",
+            "move2m",
+            "sindraw2m",
+            "grunt2m")){
   dl[[vv]] <- fun.combine(vv)
 }
 
@@ -1177,7 +1305,7 @@ df.tab3$date <- ifelse(df.tab3$hhid == 13019 & df.tab3$date == "2018-11-15", "20
 
 df.tab3$agecat <- ifelse(df.tab3$age <60, "<2m",
                          ifelse(df.tab3$age >= 60 & df.tab3$age <180, "2-6m",
-                                ifelse(df.tab3>180 & df.tab3$age <366, "6-12", NA)))
+                                ifelse(df.tab3>=180 & df.tab3$age <366, "6-12", NA)))
 
 df.tab3 <- df.tab3 %>% 
   dplyr::left_join(df.tab[,c("hhid", "irc")], by = "hhid")
@@ -1199,6 +1327,7 @@ table(df.tab3$pneumonia)
 table(dl$pneumonia)
 
 write.csv(dl, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_05-30-2022.csv")
+
 
 # 1210 175
 ###########################
