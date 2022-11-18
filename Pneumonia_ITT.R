@@ -11,6 +11,7 @@ library(fuzzyjoin)
 library(readxl)
 library(anthro)
 library(mice)
+library(weathermetrics)
 
 ### Load datasets
 getwd()
@@ -28,6 +29,12 @@ df.lus <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneu
 df.va <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_VA_trt_20220909_fmt.csv")
 df.cxr <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_XRAYtrt_20220909_fmt.csv")
 df.exit <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_Exit date.xlsx")
+
+### Temperature conversion
+df.c36$c36_temp <- ifelse(df.c36$c36_temp > 50, fahrenheit.to.celsius(df.c36$c36_temp), df.c36$c36_temp)
+df.c36a$c36a_temp <- ifelse(df.c36a$c36a_temp > 50, fahrenheit.to.celsius(df.c36a$c36a_temp), df.c36a$c36a_temp)
+df.c40$c40_temp <- ifelse(df.c40$c40_temp > 50 & df.c40$c40_temp <200, fahrenheit.to.celsius(df.c40$c40_temp),
+                          ifelse(df.c40$c40_temp == 888, NA, df.c40$c40_temp))
 
 df.c36 <- df.c36 %>% dplyr::rename(s6_arm = s6_Arm)
 df.va <- df.va %>% dplyr::rename(s6_arm = s6_Arm)
@@ -262,7 +269,8 @@ df.c36 <- fun.average(df.c36, "c36_date", "c36", "c36_oxy_60_R", "c36_oxy_90_R",
 df.c36$c36_oxym <- ifelse(df.c36$c36_oxy_supplem == 1, NA, df.c36$c36_oxym)
 
 # Average respiratory rate
-df.c36$c36_rr <- round(apply(df.c36[,c("c36_rr1", "c36_rr2")], 1, mean, na.rm = TRUE))
+#df.c36$c36_rr <- round(apply(df.c36[,c("c36_rr1", "c36_rr2")], 1, mean, na.rm = TRUE))
+df.c36$c36_rr <- apply(df.c36[,c("c36_rr1", "c36_rr2")], 1, mean, na.rm = TRUE)
 df.c36$c36_rr <- ifelse(df.c36$c36_rr == "NaN", NA, df.c36$c36_rr)
 
 # Fast-breathing
@@ -357,7 +365,8 @@ df.c36a$c36a_oxym <- ifelse(df.c36a$c36a_oxy_supplem == 1, NA, df.c36a$c36a_oxym
 table(df.c36a$c36a_hypox)
 
 # Average respiratory rate
-df.c36a$c36a_rr <- round(apply(df.c36a[,c("c36a_rr1", "c36a_rr2")], 1, mean, na.rm = TRUE))
+#df.c36a$c36a_rr <- round(apply(df.c36a[,c("c36a_rr1", "c36a_rr2")], 1, mean, na.rm = TRUE))
+df.c36a$c36a_rr <- apply(df.c36a[,c("c36a_rr1", "c36a_rr2")], 1, mean, na.rm = TRUE)
 df.c36a$c36a_rr <- ifelse(df.c36a$c36a_rr == "NaN", NA, df.c36a$c36a_rr)
 
 # Fast-breathing
@@ -1256,6 +1265,7 @@ write.csv(df.tab, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab.csv"
 # dl$pneumonia <- replace(dl$pneumonia, dl$c36a_oxy_route == 2 |
 #                           dl$c36a_oxy_route == 3 |
 #                           dl$c36a_oxy_route == 4 , 1)
+
 
 df.tab3 <- dl %>%
   dplyr::filter(pneumonia == 1) %>%
