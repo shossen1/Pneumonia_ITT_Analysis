@@ -40,6 +40,25 @@ c42<-list.files(path = paste0(Path, "Datos unblinded"),
 ```
 
 
+**c30**
+```{r}
+setwd("C:/Users/lgrajeda/OneDrive - University of Georgia/HAPIN")
+#setwd("C:/Users/lmg69188/OneDrive - University of Georgia/HAPIN")
+
+# extraer la fecha de cuando los datos fueron descargados para incluirlo en el set de datos nuevos
+dateDownload <- substring(list.files(path = "Pneumonia/Datos all IRCs/Datos unblinded", 
+                   pattern = "hapin_pneumonia_c30_",
+                   full.names = F), 23, 28)
+
+c30<-list.files(path = "Pneumonia/Datos all IRCs/Datos unblinded", 
+                   pattern = "hapin_pneumonia_c30_",
+                   full.names = TRUE) %>%
+  tail(1) %>%
+  haven::read_sas() %>%
+  filter(!is.na(c30_date)) %>% # seleccionar los registros con informacion
+  mutate(c30_DateDownloaded = dateDownload) %>%
+  rename("c30_timepoint" = timepoint)
+```
 
 
 **Pneumonia cases** This data set contains child-visits to health services and whether they met the pneumonia case definition. 
@@ -52,45 +71,239 @@ PneumoDt <- read_rds(paste0(Path, "3_Pneumonia_Aplicar defincion de caso/Output/
 
 
 
-# 3. Prepare variables 
+# 3. Prepare/create variables 
 
 
-## 3.1 Summarize measures
+## 3.1 Demographic information
 
 
-
-Pulse
+### Weight
 ```{r}
 PneumoDt <- PneumoDt %>%
-  mutate(pulse = rowMeans(PneumoDt %>% select(c36_pulse_60, c36_pulse_90, c36_pulse_120), na.rm=T))
-
-PneumoDt %>% count(c36_pulse_60, c36_pulse_90, c36_pulse_120, pulse)
-```
-Average SPO2
-```{r}
-PneumoDt <- PneumoDt %>%
-  mutate(c40oxy = matrixStats::rowMins(as.matrix(PneumoDt[,c("c40_oxy","c40_oxy_2","c40_oxy_3")]), na.rm=T),
-         c40oxy = replace(c40oxy, c40oxy=="Inf", NA))
-
-PneumoDt <- PneumoDt %>%
-  mutate(oxy = matrixStats::rowMins(as.matrix(PneumoDt[,c("c36_oxy_ave", "c40oxy")]), na.rm=T),
-         oxy = replace(oxy, oxy=="Inf", NA))
-
-PneumoDt %>% count(c36_oxy_ave, c40_oxy, c40_oxy_2, c40_oxy_3, c40oxy, oxy)
+  mutate(tb3_weight = case_when(
+            !is.na(c36_Weight_cal) ~ c36_Weight_cal,
+            is.na(c36_Weight_cal) & lead(DaysBtwVisit_cal)<=3 & !is.na(lead(c36_Weight_cal)) ~ lead(c36_Weight_cal)))
 ```
 
 
-Hypoxemia
+
+### Malnutrition
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_malnutrition = case_when(
+            c36_Malnutrition_zscore_cal==1 ~ c36_Malnutrition_zscore_cal,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_Malnutrition_zscore_cal)==1 ~ lead(c36_Malnutrition_zscore_cal),
+            c36_Malnutrition_zscore_cal==0 ~ c36_Malnutrition_zscore_cal,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_Malnutrition_zscore_cal)==0 ~ lead(c36_Malnutrition_zscore_cal),
+            TRUE ~ c36_Malnutrition_zscore_cal))
+
+```
+
+
+```{r}
+PneumoDt %>%
+  filter(hhid==44005) %>%
+  select(hhid, Visit_date_cal, age_cal, c36_zwfl, c36_zwei , c36_Malnutrition_zscore_cal, Pneumonia)
+```
+
+
+
+### Up-to-date vaccination status
+```{r}
+# many has more than one c42 record
+c42 %>% group_by(hhid) %>% count() %>% group_by(n) %>% count()
+ids<-c42 %>% group_by(hhid) %>% count() %>% filter(n>1) %>% select(hhid) %>% t() %>% as.character()
+
+c42 %>% filter(hhid %in% c(ids)) %>% select(hhid, c42_date, c42_pen1, c42_pen2, c42_pen3, c42_pen4)
+```
+
+
+
+```{r}
+
+# see variables I am going to use
+c42 %>%
+  count(hhid, c42_pneumo_time, c42_penta_time, c42_measles_time)
+
+
+# add date of birth to calculate age
+c30_paraUnir <- c30 %>% select(hhid_blinded, c30_dob)
+c42 <- c42 %>%
+  merge(c30_paraUnir, by="hhid_blinded", all.x = T) %>% # calculate age
+  mutate(c42_age_cal = interval(c30_dob, c42_date)/days())
+
+
+# Remove those records without data.
+c42 <- c42 %>% 
+  filter(!is.na(c42_pneumo_time) | !is.na(c42_penta_time) | !is.na(c42_measles_time))
+
+
+# See what is left
+c42 %>% group_by(hhid) %>% count() %>% group_by(n) %>% count()
+ids<-c42 %>% group_by(hhid) %>% count() %>% filter(n>1) %>% select(hhid) %>% t() %>% as.character()
+
+# See repeated
+c42 %>% 
+  filter(hhid %in% c(ids))%>%
+  count(hhid, c42_date, c42_pneumo_time, c42_pnm1, c42_pnm2, c42_pnm3, c42_pnm4)
+
+#c42 %>% count(hhid_blinded, c42_age_cal)
+```
+Pneumococo
+```{r}
+c42 %>% count(hhid, c42_date, c42_pneumo_time, c42_pnm1, c42_pnm2, c42_pnm3, c42_pnm4)
+```
+Pentavalente
+```{r}
+c42 %>% count(c42_penta_time)
+c42 %>% count(c42_penta_time, c42_pen1, c42_pen2, c42_pen3, c42_pen4, c42_pentavalent)
+```
+Measles
+```{r}
+a<-c42 %>% count(c42_measles_time)
+a<-c42 %>% count(c42_measles_time, c42_mmr1, c42_mr1, c42_m2, c42_measles)
+```
+
+
+## 3.2 Clinical signs
+
+### Temperature
+
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_fever = case_when(
+            c36_Fiebre_cal==1 ~ c36_Fiebre_cal,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_Fiebre_cal)==1 ~ lead(c36_Fiebre_cal),
+            c36_Fiebre_cal==0 ~ c36_Fiebre_cal,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_Fiebre_cal)==0 ~ lead(c36_Fiebre_cal),
+            TRUE ~ c36_Fiebre_cal))
+```
+
+
+
+### Pulse
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(pulse = rowMeans(PneumoDt %>% select(c36_pulse_60, c36_pulse_90, c36_pulse_120), na.rm=T),
+         tb3_pulse = case_when(
+            !is.na(pulse) ~ pulse,
+            is.na(pulse) & lead(DaysBtwVisit_cal)<=3 & !is.na(lead(pulse)) ~ lead(pulse)))
+
+PneumoDt %>% count(c36_pulse_60, c36_pulse_90, c36_pulse_120, tb3_pulse)
+```
+### Respiratory rate
+
+
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_rr = case_when(
+           c36_Tachypnea_cal==1 ~ c36_rr_cal,
+           lead(c36_Tachypnea_cal)==1 & lead(DaysBtwVisit_cal)<=3 ~ lead(c36_rr_cal),
+            !is.na(c36_rr_cal) ~ c36_rr_cal,
+            is.na(c36_rr_cal) & lead(DaysBtwVisit_cal)<=3 & !is.na(lead(c36_rr_cal)) ~ lead(c36_rr_cal)))
+
+
+PneumoDt %>% filter(hhid %in% c("23218", "23260", "23532", "23578", "33162", "33297", "33338")) %>%
+  select(hhid, Visit_date_cal, c36_rr_cal, c36_Tachypnea_cal, Pneumonia, tb3_rr)
+```
+
+```{r}
+a<-PneumoDt %>% filter(hhid %in% c("23218", "23260", "23532", "23578", "33162", "33297", "33338")) %>%
+  select(hhid, Visit_date_cal, c36_rr_cal, c36_cough, c36_DificultadResp_cal, c36_CoughDifBre_cal, c36_hipoxemia_cal, c40_hipoxemia_cal, c41_hipoxemia_cal, AllPneumonia)
+```
+
+
+### Hypoxemia
 ```{r}
 PneumoDt %>% count(c36_hipoxemia_cal, c40_hipoxemia_cal, c41_hipoxemia_cal)
 
 PneumoDt <- PneumoDt %>%
   mutate(hypoxemia = case_when(c36_hipoxemia_cal==1 | c40_hipoxemia_cal==1 | c41_hipoxemia_cal==1 ~ 1,
-                               c36_hipoxemia_cal==0 | c40_hipoxemia_cal==0 | c41_hipoxemia_cal==0~0))
+                               c36_hipoxemia_cal==0 | c40_hipoxemia_cal==0 | c41_hipoxemia_cal==0~0),
+         tb3_hypoxemia = case_when(
+            hypoxemia==1 ~ hypoxemia,
+            lead(DaysBtwVisit_cal)<=3 & lead(hypoxemia)==1 ~ lead(hypoxemia),
+            hypoxemia==0 ~ hypoxemia,
+            lead(DaysBtwVisit_cal)<=3 & lead(hypoxemia)==0 ~ lead(hypoxemia),
+            TRUE ~ hypoxemia))
 
-PneumoDt %>% count(c36_hipoxemia_cal, c40_hipoxemia_cal, c41_hipoxemia_cal, hypoxemia)
+PneumoDt %>% count(c36_hipoxemia_cal, c40_hipoxemia_cal, c41_hipoxemia_cal, tb3_hypoxemia)
 ```
 
+
+
+```{r}
+a<-PneumoDt %>% filter(hhid %in% c("13019", "15055", "23503", "23583")) %>%
+  count(hhid, Visit_date_cal, c36_hipoxemia_cal, c36_oxy_cal, c36_oxysup_cal, c36_oxy_route, c40_hipoxemia_cal, c41_hipoxemia_cal, Pneumonia, tb3_hypoxemia)
+```
+
+
+
+
+### Average SPO2.
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(c40oxy = matrixStats::rowMins(as.matrix(PneumoDt[,c("c40_oxy","c40_oxy_2","c40_oxy_3")]), na.rm=T),
+         c40oxy = replace(c40oxy, c40oxy=="Inf", NA))
+
+
+
+PneumoDt <- PneumoDt %>%
+  mutate(
+    oxy = matrixStats::rowMins(as.matrix(PneumoDt[,c("c36_oxy_ave", "c40oxy")]), na.rm=T),
+    oxy = replace(oxy, oxy=="Inf", NA),
+    tb3_oxy = case_when(
+    c36_oxy_supplem==0 & ((oxy < 92 & irc!="Peru") | (oxy < 87 & irc=="Peru")) ~ oxy,
+    lead(c36_oxy_supplem)==0 & ((lead(oxy) < 92 & irc!="Peru") | (lead(oxy) < 87 & irc=="Peru")) & lead(DaysBtwVisit_cal)<=3 ~ lead(oxy),
+    c36_oxy_supplem==0 ~ oxy,
+    lead(c36_oxy_supplem)==0 & lead(DaysBtwVisit_cal)<=3 ~ lead(oxy),
+    (is.na(c36_oxy_supplem) | c36_oxy_supplem==1) & (c40_AnyOxySup_cal==0 | is.na(c40_AnyOxySup_cal)) & ((c40oxy<92 & irc!="Peru") | (c40oxy<87 & irc=="Peru"))  ~ c40oxy,
+    (is.na(c36_oxy_supplem) | c36_oxy_supplem==1) & lead(c40_AnyOxySup_cal)==0 & 
+      ((lead(c40oxy)<92 & irc!="Peru") | (lead(c40oxy)<87 & irc=="Peru")) & lead(DaysBtwVisit_cal)<=3 ~ lead(c40oxy),
+    (is.na(c36_oxy_supplem) | c36_oxy_supplem==1) & c40_AnyOxySup_cal==0 ~ c40oxy,
+    (is.na(c36_oxy_supplem) | c36_oxy_supplem==1) & lead(c40_AnyOxySup_cal)==0 & lead(DaysBtwVisit_cal)<=3 ~ lead(c40oxy),
+    (is.na(c36_oxy_supplem) | c36_oxy_supplem==1) & c40_AnyOxySup_cal==1 ~ NA_real_,
+    TRUE ~ NA_real_))
+
+
+a<-PneumoDt %>%
+  filter(Pneumonia==1) %>%
+  arrange(c36_oxy_supplem) %>%
+  count(hhid,c36_oxy_supplem, c36_oxy_ave, c40_AnyOxySup_cal, c40oxy, tb3_oxy)
+
+PneumoDt %>%
+  filter(hhid=="16130") %>%
+  count(hhid, Visit_date_cal, DaysBtwVisit_cal, c36_oxy_supplem, c36_oxy_ave, c40_AnyOxySup_cal, c40oxy, tb3_oxy, Pneumonia)
+```
+
+
+
+```{r}
+PneumoDt %>%
+  filter(Pneumonia==1 & is.na(tb3_oxy)) %>%
+  count(c36_oxy_supplem, c40_AnyOxySup_cal, tb3_oxy)
+```
+
+**20 are missing because child was on supplementary oxygen, 10 are missing because the information was not collected.**
+
+
+
+
+### Wheeze
+
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_wheez = case_when(
+            c36_wheez_cal==1 ~ c36_wheez_cal,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_wheez_cal)==1 ~ lead(c36_wheez_cal),
+            c36_wheez_cal==0 ~ c36_wheez_cal,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_wheez_cal)==0 ~ lead(c36_wheez_cal),
+            TRUE ~ c36_wheez_cal))
+
+```
+
+
+### Respiratory danger sign
 
 At least one respiratory danger sign, n (%): chest indrawing, severe chest indrawing, head nodding, persistent nasal flaring, grunting, stridor when calm, audible wheeze, tracheal tugging, intercostal recessions
 ```{r}
@@ -99,25 +312,270 @@ PneumoDt <- PneumoDt %>%
     c36_indraw==1 | c36_s_indraw==1 | c36_nodding==1 | c36_flaring ==1 | c36_grunt==1 | 
     c36_stridor==1 | c36_wheez==1 | c36_tugging==1 | c36_retraction==1 ~ 1,
     c36_indraw==0 | c36_s_indraw==0 | c36_nodding==0 | c36_flaring ==0 | c36_grunt==0 | 
-    c36_stridor==0 | c36_wheez==0 | c36_tugging==0 | c36_retraction==0 ~ 0))
+    c36_stridor==0 | c36_wheez==0 | c36_tugging==0 | c36_retraction==0 ~ 0),
+    tb3_RDS = case_when(
+            RDS==1 ~ RDS,
+            lead(DaysBtwVisit_cal)<=3 & lead(RDS)==1 ~ lead(RDS),
+            RDS==0 ~ RDS,
+            lead(DaysBtwVisit_cal)<=3 & lead(RDS)==0 ~ lead(RDS),
+            TRUE ~ RDS))
 ```
 
 
-At least one general danger sign, n (%)
+### Chest indrawing
 ```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_indraw = case_when(
+            c36_indraw==1 ~ c36_indraw,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_indraw)==1 ~ lead(c36_indraw),
+            c36_indraw==0 ~ c36_indraw,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_indraw)==0 ~ lead(c36_indraw),
+            TRUE ~ c36_indraw))
+```
+
+### Severe chest indrawing
 
 
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(s_indraw_2m = case_when(
+    age_cal < 60 & c36_s_indraw==1 ~ 1,
+    age_cal < 60 & c36_s_indraw==0 ~ 0,
+    age_cal > 60 ~ NA_real_ ),
+    tb3_s_indraw_2m = case_when(
+            s_indraw_2m==1 ~ s_indraw_2m,
+            lead(DaysBtwVisit_cal)<=3 & lead(s_indraw_2m)==1 ~ lead(s_indraw_2m),
+            s_indraw_2m==0 ~ s_indraw_2m,
+            lead(DaysBtwVisit_cal)<=3 & lead(s_indraw_2m)==0 ~ lead(s_indraw_2m),
+            TRUE ~ s_indraw_2m))
+
+PneumoDt %>% count(age_cal, tb3_s_indraw_2m)
+
+# Que paso con esta edad?
+PneumoDt %>% filter(age_cal== -52) %>% select(c30_dob, c36_h_date, c36_h_date_cal, c40_date_arrive_cal, c41_date_admit_cal, Pneumonia, irc)
+```
+
+
+### Head nodding
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_nodding = case_when(
+            c36_nodding==1 ~ c36_nodding,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_nodding)==1 ~ lead(c36_nodding),
+            c36_nodding==0 ~ c36_nodding,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_nodding)==0 ~ lead(c36_nodding),
+            TRUE ~ c36_nodding))
+```
+
+
+```{r}
+PneumoDt %>% filter(hhid=="23260" | hhid=="33547") %>% select(hhid, Pneumonia, c36_nodding, Visit_date_cal, DaysBtwVisit_cal, tb3_nodding)
+```
+
+
+
+### Persistent nasal flaring
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_flaring = case_when(
+            c36_flaring==1 ~ c36_flaring,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_flaring)==1 ~ lead(c36_flaring),
+            c36_flaring==0 ~ c36_flaring,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_flaring)==0 ~ lead(c36_flaring),
+            TRUE ~ c36_flaring))
+```
+
+
+### Grunting
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_grunt = case_when(
+            c36_grunt==1 ~ c36_grunt,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_grunt)==1 ~ lead(c36_grunt),
+            c36_grunt==0 ~ c36_grunt,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_grunt)==0 ~ lead(c36_grunt),
+            TRUE ~ c36_grunt))
+```
+
+
+### Stridor when calm
+
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_stridor = case_when(
+            c36_stridor==1 ~ c36_stridor,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_stridor)==1 ~ lead(c36_stridor),
+            c36_stridor==0 ~ c36_stridor,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_stridor)==0 ~ lead(c36_stridor),
+            TRUE ~ c36_stridor))
+```
+
+### Audible wheeze
+
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_awheez = case_when(
+            c36_wheez==1 ~ c36_wheez,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_wheez)==1 ~ lead(c36_wheez),
+            c36_wheez==0 ~ c36_wheez,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_wheez)==0 ~ lead(c36_wheez),
+            TRUE ~ c36_wheez))
+```
+
+
+
+
+### Tracheal tugging
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_tugging = case_when(
+            c36_tugging==1 ~ c36_tugging,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_tugging)==1 ~ lead(c36_tugging),
+            c36_tugging==0 ~ c36_tugging,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_tugging)==0 ~ lead(c36_tugging),
+            TRUE ~ c36_tugging))
+```
+
+
+
+### Intercostal retractions
+
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_retraction = case_when(
+            c36_retraction==1 ~ c36_retraction,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_retraction)==1 ~ lead(c36_retraction),
+            c36_retraction==0 ~ c36_retraction,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_retraction)==0 ~ lead(c36_retraction),
+            TRUE ~ c36_retraction))
+```
+
+
+
+```{r}
+PneumoDt %>% filter(hhid=="33547") %>% select(Visit_date_cal, c36_time, c36_location_cal, c36_retraction, Pneumonia)
+```
+
+### At least one general danger sign
+
+```{r}
 PneumoDt <- PneumoDt %>%
   mutate(DangerSign = case_when(
-    c36_DangerSigns_cal==1 | c36_NeoDangerSigns_cal==1 ~ 1,
-    c36_DangerSigns_cal==0 & c36_NeoDangerSigns_cal==0 ~ 0,
-    TRUE ~ NA_real_ ))
+    age_cal < 60 & (c36_DangerSigns_cal==1 | c36_NeoDangerSigns_cal==1) ~ 1,
+    age_cal < 60 & (c36_DangerSigns_cal==0 & c36_NeoDangerSigns_cal==0) ~ 0,
+    age_cal >= 60 & c36_DangerSigns_cal==1 ~ 1,
+    age_cal >= 60 & c36_DangerSigns_cal==0 ~ 0,
+    TRUE ~ NA_real_ )) %>%
+  mutate(tb3_dangerSign = case_when(
+            DangerSign==1 ~ DangerSign,
+            lead(DaysBtwVisit_cal)<=3 & lead(DangerSign)==1 ~ lead(DangerSign),
+            DangerSign==0 ~ DangerSign,
+            lead(DaysBtwVisit_cal)<=3 & lead(DangerSign)==0 ~ lead(DangerSign),
+            TRUE ~ DangerSign))
 
 PneumoDt %>%
-  count(c36_DangerSigns_cal, c36_NeoDangerSigns_cal, DangerSign)
+  count(age_cal,c36_DangerSigns_cal, c36_NeoDangerSigns_cal, tb3_dangerSign)
 ```
 
-Lung imaging
+### Unable to drink or breastfeed
+
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_drink = case_when(
+            c36_drink==1 ~ c36_drink,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_drink)==1 ~ lead(c36_drink),
+            c36_drink==0 ~ c36_drink,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_drink)==0 ~ lead(c36_drink),
+            TRUE ~ c36_drink))
+```
+
+
+
+### Vomiting everything, n 
+
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_vomit = case_when(
+            c36_vomit==1 ~ c36_vomit,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_vomit)==1 ~ lead(c36_vomit),
+            c36_vomit==0 ~ c36_vomit,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_vomit)==0 ~ lead(c36_vomit),
+            TRUE ~ c36_vomit))
+```
+
+
+
+### Convulsions
+
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_convulsion = case_when(
+            c36_convulsion==1 ~ c36_convulsion,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_convulsion)==1 ~ lead(c36_convulsion),
+            c36_convulsion==0 ~ c36_convulsion,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_convulsion)==0 ~ lead(c36_convulsion),
+            TRUE ~ c36_convulsion))
+```
+
+
+```{r}
+PneumoDt %>% filter(hhid =="23218") %>% select(Visit_date_cal, c36_convulsion, c36_convulsion_2, Pneumonia)
+```
+
+
+### Lethargy or unconscious
+
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_unconscious = case_when(
+            c36_unconscious==1 ~ c36_unconscious,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_unconscious)==1 ~ lead(c36_unconscious),
+            c36_unconscious==0 ~ c36_unconscious,
+            lead(DaysBtwVisit_cal)<=3 & lead(c36_unconscious)==0 ~ lead(c36_unconscious),
+            TRUE ~ c36_unconscious))
+```
+
+
+### Unable to feed well
+
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(feed_2m = case_when(
+                age_cal < 60 & c36_feed==1 ~ 1,
+                age_cal < 60 & c36_feed==0 ~ 0,
+                age_cal > 60 ~ NA_real_ ),
+        tb3_feed_2m = case_when(
+            feed_2m==1 ~ feed_2m,
+            lead(DaysBtwVisit_cal)<=3 & lead(feed_2m)==1 ~ lead(feed_2m),
+            feed_2m==0 ~ feed_2m,
+            lead(DaysBtwVisit_cal)<=3 & lead(feed_2m)==0 ~ lead(feed_2m),
+            TRUE ~ feed_2m))
+
+PneumoDt %>% count(age_cal, tb3_feed_2m)
+```
+
+### Not moving at all or moves only
+
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(move_2m = case_when(
+    age_cal < 60 & c36_move==1 ~ 1,
+    age_cal < 60 & c36_move==0 ~ 0,
+    age_cal > 60 ~ NA_real_ ),
+        tb3_move_2m = case_when(
+            move_2m==1 ~ move_2m,
+            lead(DaysBtwVisit_cal)<=3 & lead(move_2m)==1 ~ lead(move_2m),
+            move_2m==0 ~ move_2m,
+            lead(DaysBtwVisit_cal)<=3 & lead(move_2m)==0 ~ lead(move_2m),
+            TRUE ~ move_2m))
+
+PneumoDt %>% count(age_cal, tb3_move_2m)
+```
+
+
+## 3.3 Lung imaging
+
+Lung ultrasound
 ```{r}
 a<-PneumoDt %>% 
   filter(lus_pneumonia_final==1) %>%
@@ -146,13 +604,39 @@ c %>%
 
 ```
 
+```{r}
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_lus_pneumonia_final = case_when(
+            lus_pneumonia_final==1 ~ lus_pneumonia_final,
+            lead(DaysBtwVisit_cal)<=3 & lead(lus_pneumonia_final)==1 ~ lead(lus_pneumonia_final),
+            lus_pneumonia_final==0 ~ lus_pneumonia_final,
+            lead(DaysBtwVisit_cal)<=3 & lead(lus_pneumonia_final)==0 ~ lead(lus_pneumonia_final),
+            TRUE ~ lus_pneumonia_final))
+```
+
+
+
 x rays
 
 
 Negative xray read were not merge with visits because dont have date
 ```{r}
-PneumoDt %>% count(xray_Final_read, xray_Image_date, Pneumonia)
+PneumoDt %>%
+  filter(!is.na(xray_Final_read)) %>%
+  count(xray_Final_read, xray_Image_date, Pneumonia, c36_date)
+
+
+PneumoDt <- PneumoDt %>%
+  mutate(tb3_xray_Final_read = case_when(
+            xray_Final_read==1 ~ xray_Final_read,
+            lead(DaysBtwVisit_cal)<=3 & lead(xray_Final_read)==1 ~ lead(xray_Final_read),
+            xray_Final_read==0 ~ xray_Final_read,
+            lead(DaysBtwVisit_cal)<=3 & lead(xray_Final_read)==0 ~ lead(xray_Final_read),
+            TRUE ~ xray_Final_read))
+
 ```
+
+## 3.4 Clinical care
 
 Hospitalized
 
@@ -163,48 +647,174 @@ PneumoDt %>% count(c36_after, !is.na(c36_hospitalized))
 PneumoDt %>% count(c41_location_cal, c41_FacilityType_cal)
 
 PneumoDt <- PneumoDt %>% 
-  mutate(c41_Hospitalized = interval(c41_date_admit_cal, c41_discharge_date)/ddays(),
-         hospitalized = case_when(
-           c36_after==2 | c41_Hospitalized>=1 ~ 1,
-           c36_after!= 2 | c41_Hospitalized ==0 ~ 0,
-           TRUE  ~ NA_real_))
+  group_by(hhid_blinded) %>%
+  mutate(tb3_c41_Hospitalized = interval(c41_date_admit_cal, c41_discharge_date)/ddays(),
+         tb3_hospitalized = case_when(
+           c36_after==2 | tb3_c41_Hospitalized>=1 | (lead(DaysBtwVisit_cal)<=3 & lead(tb3_c41_Hospitalized)>=1) ~ 1,
+           c36_after!= 2 | tb3_c41_Hospitalized ==0 ~ 0,
+           TRUE  ~ NA_real_)) %>%
+  ungroup(hhid_blinded)
+
+# id with no possible hospitalizations
+PneumoDt %>% 
+  select(hhid, hhid_blinded, tb3_c41_Hospitalized, c41_date_admit_cal, c41_discharge_date, irc, c36_after) %>% 
+  filter(tb3_c41_Hospitalized > 40 | tb3_c41_Hospitalized < 0) %>%
+  arrange(tb3_c41_Hospitalized)
+
+
+ids<-PneumoDt %>% filter((lead(DaysBtwVisit_cal)<=3 & lead(tb3_c41_Hospitalized)>=1)) %>%
+  select(hhid) %>% t() %>% as.character()
+
+a<-PneumoDt %>% filter(hhid %in% c(ids)) %>% select(hhid, Visit_date_cal, c41_date_admit_cal, c41_discharge_date, tb3_c41_Hospitalized, c36_after, tb3_hospitalized, Pneumonia) %>% arrange(hhid, Visit_date_cal)
+```
+
+
+Oxygen treatment
+```{r}
+# 
+PneumoDt %>% count(c36_oxy_supplem)
+PneumoDt %>%
+  filter(c36_CRF=="c36") %>%
+  count(c36_oxy_supplem, c36_oxy_supplem_R, c36_oxy_route)
+
+PneumoDt %>%
+  filter(c36_CRF=="c36a") %>%
+  count(c36_oxy_supplem, c36_oxy_route)
+
+PneumoDt %>% count(c40_oxygen)
+
+PneumoDt %>% count(c40_oxygen_2)
+
+PneumoDt %>% count(c40_receive)
+
+PneumoDt %>% count(c40_receive_new1)
+
+PneumoDt %>% count(c40_receive_2)
+
+PneumoDt %>% count(c40_receive_new2)
+
+PneumoDt %>% count(c41_oxygen_supplement, c41_oxygen_positive, c41_oxygen_mechanical)
+
+a<-PneumoDt %>% count(c41_oxygen_2_supplement, c41_oxygen_2_positive, c41_oxygen_2_mechanical, c41_oxygen_2_highflownasal, c41_oxygen_2_nasal)
+
+
+PneumoDt <- PneumoDt %>%
+  mutate(OxyTx = case_when(
+    c36_oxy_route==1 | c40_oxygen==1 | c40_oxygen_2 == 1 | c40_receive == 1 | c40_receive_new1 == 1 | c40_receive_2 == 1 | 
+    c40_receive_new2 == 1 | c40_receive_3 == 1 | c40_receive_new3 == 1 | c41_oxygen_supplement== 1 | 
+    c41_oxygen_2_supplement==1 | c41_oxygen_2_nasal==1 ~ 1,
+    
+    c36_oxy_route==2 | c36_oxy_route==3 | c36_oxy_route==4 | c36_oxy_supplem==0 | 
+    c40_oxygen==0 | c40_oxygen==2 | 
+    c40_oxygen_2 == 0 | c40_oxygen_2 == 2 | c40_oxygen_2 == 3 | c40_oxygen_2 == 4 |
+    c40_receive == 0 | c40_receive == 2 |
+    c40_receive_new1 == 0 | c40_receive_new1 == 2 | c40_receive_new1 == 3 | c40_receive_new1 == 4 |
+    c40_receive_2 == 0 | c40_receive_2 ==2 |
+    c40_receive_new2 == 0 | c40_receive_new2 == 2 | c40_receive_new2 == 3 | c40_receive_new2 == 4 |
+    c40_receive_3 == 0 | c40_receive_3 ==2 |
+    c40_receive_new3 == 0 | c40_receive_new3 == 2 | c40_receive_new3 == 3 | c40_receive_new2 == 3 |
+    c41_oxygen_roomair == 1 | c41_oxygen_mechanical == 1 | c41_oxygen_positive==1 | 
+    c41_oxygen_2_roomair == 1 | c41_oxygen_2_highflownasal == 1 | c41_oxygen_2_mechanical == 1 | c41_oxygen_2_positive==1 ~ 0,
+    TRUE ~ NA_real_  ),
+    tb3_oxyTx = case_when(
+            OxyTx==1 ~ OxyTx,
+            lead(DaysBtwVisit_cal)<=3 & lead(OxyTx)==1 ~ lead(OxyTx),
+            OxyTx==0 ~ OxyTx,
+            lead(DaysBtwVisit_cal)<=3 & lead(OxyTx)==0 ~ lead(OxyTx),
+            TRUE ~ OxyTx))
+
+PneumoDt %>%
+  count(tb3_oxyTx)
+```
+
+**Advanced respiratory supportive care** Any of the following: High flow, NIV (CPAP/BiPAP), mechanical ventilation
+
+```{r}
+PneumoDt %>% count(c36_oxy_route)
+
+
+PneumoDt <- PneumoDt %>%
+  mutate(advOxyTx = case_when(
+    c36_oxy_route==2 | c36_oxy_route==3 | c36_oxy_route==4 |
+    c40_oxygen==2 | 
+    c40_oxygen_2 == 2 | c40_oxygen_2 == 3 | c40_oxygen_2 == 4 |
+    c40_receive == 2 |
+    c40_receive_new1 == 2 | c40_receive_new1 == 3 | c40_receive_new1 == 4 |
+    c40_receive_2 == 2 |
+    c40_receive_new2 == 2 | c40_receive_new2 == 3 | c40_receive_new2 == 4 |
+    c40_receive_3 == 2 |
+    c40_receive_new3 == 2 | c40_receive_new3 == 3 | c40_receive_new3 == 4 |
+    c41_oxygen_positive==1 | c41_oxygen_mechanical==1 |
+    c41_oxygen_2_positive==1 | c41_oxygen_2_mechanical==1 | c41_oxygen_2_highflownasal==1 ~ 1,
+    
+    c36_oxy_supplem==0 | c36_oxy_route==1 |
+    c40_oxygen==0 | c40_oxygen==1 |
+    c40_oxygen_2 == 0 | c40_oxygen_2 == 1 |
+    c40_receive == 0 | c40_receive == 1 |
+    c40_receive_new1 == 0 | c40_receive_new1 == 1 |
+    c40_receive_2 == 0 | c40_receive_2 == 1 |
+    c40_receive_new2 == 0 | c40_receive_new2 == 1 |
+    c40_receive_3 == 0 | c40_receive_3 == 1 |
+    c40_receive_new3 == 0 | c40_receive_new3 == 1 |
+    c41_oxygen_roomair == 1 | c41_oxygen_supplement==1 |
+    c41_oxygen_2_roomair == 1 | c41_oxygen_2_nasal==1 | c41_oxygen_2_supplement==1 ~ 0,
+    TRUE ~ NA_real_  ),
+     tb3_advOxyTx = case_when(
+            advOxyTx==1 ~ advOxyTx,
+            lead(DaysBtwVisit_cal)<=3 & lead(advOxyTx)==1 ~ lead(advOxyTx),
+            advOxyTx==0 ~ advOxyTx,
+            lead(DaysBtwVisit_cal)<=3 & lead(advOxyTx)==0 ~ lead(advOxyTx),
+            TRUE ~ advOxyTx))
+
+PneumoDt %>%
+  count(tb3_advOxyTx)
+
+```
+
+**Mortality** Death <30 days since diagnosis and/or Verbal Autopsy positive
+```{r}
+PneumoDt %>% count(va_pcvaCoD, !is.na(va_DateDownloaded), !is.na(e2_death_date))
+PneumoDt %>% count(s6_Arm, va_DateDownloaded)
+
+PneumoDt <- PneumoDt %>%
+  group_by(hhid_blinded) %>%
+  mutate(tb3_Death = ifelse(!is.na(e2_death_date),1,0),
+         tb3_DeathWithin30days = case_when(
+           tb3_Death==1 ~ 1,
+           lead(DaysBtwVisit_cal<30) & lead(tb3_Death==1) ~ 1,
+           tb3_Death==0 ~ 0,
+           TRUE ~ NA_real_ )) %>%
+  ungroup()
 
 PneumoDt %>% 
-  select(c41_Hospitalized, c41_date_admit_cal, c41_discharge_date, irc, c36_after) %>% 
-  filter(c41_Hospitalized > 40 | c41_Hospitalized < 0) %>%
-  arrange(c41_Hospitalized)
+  arrange(hhid_blinded, Visit_date_cal) %>%
+  count(hhid, Visit_date_cal, DaysBtwVisit_cal)
 
-PneumoDt %>% 
-  mutate(h = case_when(
-    c41_Hospitalized < 0 ~ "Menor 0",
-    c41_Hospitalized == 0 ~ "0",
-    c41_Hospitalized >0 ~ "Mayor 0",
-    TRUE ~ NA_character_)) %>%
-  count(h, c36_after, hospitalized) 
-
-a<-PneumoDt %>% 
-  mutate(h = case_when(
-    c41_Hospitalized < 0 ~ "Menor 0",
-    c41_Hospitalized == 0 ~ "0",
-    c41_Hospitalized >0 ~ "Mayor 0",
-    TRUE ~ NA_character_)) %>%
-  filter(h==0 & c36_after==2) %>%
-  select(irc, c36_date, c36_h_date, c36_hospitalized, c36_location_cal, c40_date_arrive_cal, c40_location_cal, c41_date_admit_cal, c41_location_cal, c41_discharge_date, h, c36_after)
+ids <- PneumoDt %>% filter(tb3_Death==1) %>% select(hhid_blinded) %>% t() %>% as.character()
+PneumoDt %>% filter(hhid_blinded %in% c(ids)) %>% 
+  arrange(hhid_blinded, Visit_date_cal) %>%
+  select(hhid_blinded, Visit_date_cal, DaysBtwVisit_cal, tb3_Death, va_pcvaCoD, tb3_DeathWithin30days)
 
 ```
 
 
-## 3.2 Select pneumonia cases
+
+# 4. Select pneumonia cases
 
 
 ```{r}
 dt <- PneumoDt %>% 
   filter(Pneumonia==1)
+
+write_rds(dt, "2022-12-15_HAPIN_Primary pneumonia cases.rds")
+writexl::write_xlsx(dt, "2022-12-15_HAPIN_Primary pneumonia cases.xlsx")
 ```
 
 
 
-# 4. Check each variable
+
+
+# 5. Check each variable
 
 Arm
 ```{r}
@@ -214,10 +824,10 @@ attr(dt$s6_Arm, "label") <- "Study arm"
 ```
 
 
-## 4.1 Demogrphic information
+## 5.1 Demogrphic information
 
 
-IRC
+### IRC
 ```{r}
 dt %>% count(irc)
 dt$irc <- factor(dt$irc)
@@ -228,13 +838,17 @@ Age
 ```{r}
 
 dt <- dt %>%
-  mutate(AgeGroup = factor(case_when(
-    interval(c30_dob, Visit_date_cal)/dmonths() < 2 ~ "<2",
-    interval(c30_dob, Visit_date_cal)/dmonths() < 6 ~ "2 to <6",
-    interval(c30_dob, Visit_date_cal)/dmonths() < 12 ~ "6 to <12")))
+  mutate(tb3_AgeGroup = factor(case_when(
+    interval(c30_dob, Visit_date_cal)/days() < 60 ~ "<2",
+    interval(c30_dob, Visit_date_cal)/days() < 180 ~ "2 to <6",
+    interval(c30_dob, Visit_date_cal)/days() < 366 ~ "6 to <12")),
+    interval= interval(c30_dob, Visit_date_cal)/days())
 
-dt %>% count(age_cal, AgeGroup)
-attr(dt$AgeGroup, "label") <- "Child's age (months)"
+dt %>% count(age_cal, tb3_AgeGroup)
+attr(dt$tb3_AgeGroup, "label") <- "Child's age (months)"
+
+
+dt %>% filter(hhid=="33125") %>% select(c36_age_cal, tb3_AgeGroup, interval)
 ```
 
 
@@ -246,24 +860,50 @@ attr(dt$c30_sex, "label") <- "Child's sex"
 ```
 
 
-Weight
+### Weight
 ```{r}
-dt %>% count(!is.na(c36_Weight_cal))
-dt$c36_Weight_cal <- as.numeric(dt$c36_Weight_cal)
-attr(dt$c36_Weight_cal, "label") <- "Child's weight (Kg)"
+dt %>% count(!is.na(c36_Weight_cal), !is.na(tb3_weight))
+dt$tb3_weight <- as.numeric(dt$tb3_weight)
+attr(dt$tb3_weight, "label") <- "Child's weight (Kg)"
 ```
 
 
-Severe acute malnutrition
+### Severe acute malnutrition
 ```{r}
-dt %>% count(c36_Malnutrition_zscore_cal)
-dt$c36_Malnutrition_zscore_cal <- factor(dt$c36_Malnutrition_zscore_cal, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_Malnutrition_zscore_cal, "label") <- "Severe acute malnutrition"
+dt %>% count(c36_Malnutrition_zscore_cal, tb3_malnutrition)
+dt$tb3_malnutrition <- factor(dt$tb3_malnutrition, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_malnutrition, "label") <- "Severe acute malnutrition"
 ```
 
 
 
 ### Up-to-date vaccination status
+
+
+```{r}
+c42_paraUnir <- c42 %>% select(hhid, hhid_blinded, c42_date, c42_age_cal, c42_pneumo_time, c42_penta_time, c42_measles_time)
+
+dt2 <- dt %>%
+  merge(c42_paraUnir, by=c("hhid", "hhid_blinded"), all.x = T)
+
+dt2 %>% group_by(hhid, age_cal) %>% count() %>% filter(n>1)
+```
+
+
+
+
+```{r}
+dt %>% filter(hhid=="13019") %>% select(hhid, irc, Visit_date_cal, Pneumonia, age_cal)
+c42 %>% filter(hhid=="13019") %>% select(hhid, c42_date, c42_age_cal, c42_pneumo_time, c42_penta_time, c42_measles_time)
+
+dt %>% filter(hhid=="23034") %>% select(hhid, irc, Visit_date_cal, Pneumonia, age_cal)
+c42 %>% filter(hhid=="23034") %>% select(hhid, c42_date, c42_age_cal, c42_pneumo_time, c42_penta_time, c42_measles_time)
+
+dt %>% filter(hhid=="24044") %>% select(hhid, irc, Visit_date_cal, Pneumonia, age_cal)
+c42 %>% filter(hhid=="24044") %>% select(hhid, c42_date, c42_age_cal, c42_pneumo_time, c42_penta_time, c42_measles_time)
+```
+
+
 
 PM2.5, CO, BC
 
@@ -271,237 +911,323 @@ Antenatal PM2.5, CO, BC
 
 Postnatal PM2.5, CO, BC
 
-## 4.2 Clinical signs
+## 5.2 Clinical signs
 
 
-**Temperature >38 C, n (%)**
+### Temperature >38 C, n (%)
 ```{r}
-dt %>% count(c36_Fiebre_cal)
-dt$c36_Fiebre_cal <- factor(dt$c36_Fiebre_cal, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_Fiebre_cal, "label") <- "Temperature >38°C"
+dt %>% count(c36_Fiebre_cal, tb3_fever)
+dt$tb3_fever <- factor(dt$tb3_fever, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_fever, "label") <- "Temperature >38°C"
 
+dt %>% filter(c36_Fiebre_cal==0 & tb3_fever==1) %>% select(hhid)
 ```
 
 
-**Average Heart rate**
+### Average Heart rate
+
 ```{r}
-dt %>% count(!is.na(pulse))
-attr(dt$pulse, "label") <- "Average heart rate (Beats per minute)"
-```
-**Average Respiratory rate**
-```{r}
-dt %>% count(!is.na(c36_rr_cal))
-attr(dt$c36_rr_cal, "label") <- "Average respiratory rate (Breaths per minute)"
-```
-**Average SPO2**
-```{r}
-dt %>% count(oxy)
-attr(dt$oxy, "label") <- "Average SpO2"
+dt %>% count(!is.na(tb3_pulse), !is.na(pulse))
+attr(dt$tb3_pulse, "label") <- "Average heart rate (Beats per minute)"
 ```
 
 
 
-**Hypoxemia**
-```{r}
-dt %>% count(hypoxemia)
-dt$hypoxemia <- factor(dt$hypoxemia, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$hypoxemia, "label") <- "Hypoxemia"
 
-```
-**Wheeze +/- crackles, n (%)** In wheeze whether or not crackles present…
+### Average Respiratory rate
 ```{r}
-dt %>% count(c36_wheez_cal)
-dt$c36_wheez_cal<- factor(dt$c36_wheez_cal, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_wheez_cal, "label") <- "Wheeze"
-
-```
-**Respiratory danger sign**
-```{r}
-dt %>% count(RDS)
-dt$RDS <- factor(dt$RDS, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$RDS, "label") <- "Respiratory danger sign"
-```
-**Chest indrawing, n (%)**
-```{r}
-dt %>% count(c36_indraw)
-dt$c36_indraw <- factor(dt$c36_indraw, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_indraw, "label") <- "Chest indrawing"
+dt %>% count(!is.na(tb3_rr), !is.na(c36_rr_cal))
+attr(dt$tb3_rr, "label") <- "Average respiratory rate (Breaths per minute)"
 ```
 
-
-**Severe chest indrawing (Applies to <2 months only)**
+### Average SPO2
 ```{r}
-dt %>% count(c36_s_indraw)
-dt$c36_s_indraw <- factor(dt$c36_s_indraw, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_s_indraw, "label") <- "Severe chest indrawing (only <2 months old)"
+dt %>% count(!is.na(tb3_oxy), !is.na(oxy))
+attr(dt$tb3_oxy, "label") <- "Average SpO2"
 ```
 
 
 
-**Head nodding, n (%)**
+### Hypoxemia
 ```{r}
-dt %>% count(c36_nodding)
-dt$c36_nodding <- factor(dt$c36_nodding, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_nodding, "label") <- "Head nodding"
+dt %>% count(tb3_hypoxemia, hypoxemia)
+dt$tb3_hypoxemia <- factor(dt$tb3_hypoxemia, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_hypoxemia, "label") <- "Hypoxemia"
+
+dt %>% filter(hypoxemia==0 & tb3_hypoxemia=="yes") %>% select(hhid)
+
+a<-PneumoDt %>% filter(hhid %in% c("23218", "23260", "23578", "33119", "33166", "45024")) %>% 
+  select(hhid, irc, Visit_date_cal, c36_oxy_ave, c40_oxy, c40_oxy_2, c40_oxy_3, hypoxemia, tb3_hypoxemia, oxy, tb3_oxy, Pneumonia) %>%
+  arrange(hhid, Visit_date_cal)
 ```
 
 
-**Persistent nasal flaring, n (%)**
+### Wheeze +/- crackles, n (%)
+In wheeze whether or not crackles present…
 ```{r}
-dt %>% count(c36_flaring)
-dt$c36_flaring <- factor(dt$c36_flaring, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_flaring, "label") <- "Persistent nasal flaring"
+dt %>% count(c36_wheez_cal, tb3_wheez)
+dt$tb3_wheez<- factor(dt$tb3_wheez, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_wheez, "label") <- "Wheeze"
+
+
+dt %>% filter(c36_wheez_cal==0 & tb3_wheez=="yes") %>% select(hhid)
+```
+
+### Respiratory danger sign
+```{r}
+dt %>% count(tb3_RDS, RDS)
+dt$tb3_RDS <- factor(dt$tb3_RDS, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_RDS, "label") <- "Respiratory danger sign"
+
+
+dt %>% filter(RDS==0 & tb3_RDS=="yes") %>% select(hhid)
+
+```
+### Chest indrawing, n (%)
+```{r}
+dt %>% count(tb3_indraw, c36_indraw)
+dt$tb3_indraw <- factor(dt$tb3_indraw, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_indraw, "label") <- "Chest indrawing"
+
+dt %>% filter(c36_indraw==0 & tb3_indraw=="yes") %>% select(hhid)
 ```
 
 
-**Grunting, n (%)**
+### Severe chest indrawing (Applies to <2 months only)
 ```{r}
-dt %>% count(c36_grunt)
-dt$c36_grunt <- factor(dt$c36_grunt, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_grunt, "label") <- "Grunting"
-```
+dt %>%
+  filter(age_cal <60) %>%
+  count(tb3_s_indraw_2m, c36_s_indraw)
 
-
-**Stridor when calm, n (%)**
-```{r}
-dt %>% count(c36_stridor)
-dt$c36_stridor <- factor(dt$c36_stridor, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_stridor, "label") <- "Stridor when calm"
-```
-
-
-**Audible wheeze, n (%)**
-```{r}
-dt %>% count(c36_wheez)
-dt$c36_wheez <- factor(dt$c36_wheez, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_wheez, "label") <- "Audible wheeze"
-```
-**Tracheal tugging, n (%)**
-```{r}
-dt %>% count(c36_tugging)
-dt$c36_tugging <- factor(dt$c36_tugging, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_tugging, "label") <- "Tracheal tugging"
-```
-
-**Intercostal retractions, n (%)**
-```{r}
-dt %>% count(c36_retraction)
-dt$c36_retraction <- factor(dt$c36_retraction, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_retraction, "label") <- "Intercostal retractions"
-```
-
-**At least one general danger sign**
-```{r}
-dt %>% count(DangerSign)
-dt$DangerSign <- factor(dt$DangerSign, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$DangerSign, "label") <- "At least one general danger sign"
-```
-
-**Unable to drink or breastfeed**
-```{r}
-dt %>% count(c36_drink)
-dt$c36_drink <- factor(dt$c36_drink, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_drink, "label") <- "Unable to drink or breastfeed"
+dt$tb3_s_indraw_2m <- factor(dt$tb3_s_indraw_2m, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_s_indraw_2m, "label") <- "Severe chest indrawing (only <2 months old)"
 ```
 
 
 
-**Vomiting everything**
+### Head nodding, n (%)**
 ```{r}
-dt %>% count(c36_vomit)
-dt$c36_vomit <- factor(dt$c36_vomit, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_vomit, "label") <- "Vomiting everything"
+dt %>% count(tb3_nodding, c36_nodding)
+dt$tb3_nodding <- factor(dt$tb3_nodding, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_nodding, "label") <- "Head nodding"
+
+
+dt %>% filter(c36_nodding==0 & tb3_nodding=="yes") %>% select(hhid)
 ```
 
 
-**Convulsions**
+### Persistent nasal flaring, n (%)**
 ```{r}
-dt %>% count(c36_convulsion)
-dt$c36_convulsion <- factor(dt$c36_convulsion, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_convulsion, "label") <- "Convulsions"
+dt %>% count(tb3_flaring, c36_flaring)
+dt$tb3_flaring <- factor(dt$tb3_flaring, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_flaring, "label") <- "Persistent nasal flaring"
 ```
 
 
-**Lethargy or unconscious**
+### Grunting, n (%)**
 ```{r}
-dt %>% count(c36_unconscious)
-dt$c36_unconscious <- factor(dt$c36_unconscious, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_unconscious, "label") <- "Lethargy or unconscious"
+dt %>% count(tb3_grunt, c36_grunt)
+dt$tb3_grunt <- factor(dt$tb3_grunt, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_grunt, "label") <- "Grunting"
 ```
 
 
-**Unable to feed well**
+### Stridor when calm, n (%)**
 ```{r}
-dt %>% count(c36_feed)
-dt$c36_feed <- factor(dt$c36_feed, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_feed, "label") <- "Unable to feed well"
+dt %>% count(tb3_stridor, c36_stridor)
+dt$tb3_stridor <- factor(dt$tb3_stridor, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_stridor, "label") <- "Stridor when calm"
+
+dt %>% filter(c36_stridor==0 & tb3_stridor=="yes") %>% select(hhid)
+
 ```
 
 
-**Not moving at all or moves only**
+### Audible wheeze, n (%)**
 ```{r}
-dt %>% count(c36_move)
-dt$c36_move <- factor(dt$c36_move, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$c36_move, "label") <- "Not moving at all or moves only"
+dt %>% count(tb3_awheez, c36_wheez)
+dt$tb3_awheez <- factor(dt$tb3_awheez, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_awheez, "label") <- "Audible wheeze"
+
+dt %>% filter(c36_wheez==0 & tb3_awheez=="yes") %>% select(hhid)
 ```
 
 
-## 4.3 Lung imaging
+### Tracheal tugging, n (%)
+```{r}
+dt %>% count(c36_tugging, tb3_tugging)
+dt$tb3_tugging <- factor(dt$tb3_tugging, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_tugging, "label") <- "Tracheal tugging"
+
+dt %>% filter(c36_tugging==0 & tb3_tugging=="yes") %>% select(hhid)
+```
+
+### Intercostal retractions, n (%)
+```{r}
+dt %>% count(c36_retraction, tb3_retraction)
+dt$tb3_retraction <- factor(dt$tb3_retraction, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_retraction, "label") <- "Intercostal retractions"
+
+dt %>% filter(c36_retraction==0 & tb3_retraction=="yes") %>% select(hhid)
+```
+
+### At least one general danger sign
+```{r}
+dt %>% count(tb3_dangerSign, c36_DangerSigns_cal, c36_NeoDangerSigns_cal)
+dt$tb3_dangerSign <- factor(dt$tb3_dangerSign, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_dangerSign, "label") <- "At least one general danger sign"
+
+
+dt %>% filter((c36_DangerSigns_cal==0 | is.na(c36_DangerSigns_cal)) & (c36_NeoDangerSigns_cal==0 | is.na(c36_NeoDangerSigns_cal)) & tb3_dangerSign=="yes") %>% select(hhid)
+```
+
+### Unable to drink or breastfeed**
+```{r}
+dt %>% count(tb3_drink, c36_drink)
+dt$tb3_drink <- factor(dt$tb3_drink, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_drink, "label") <- "Unable to drink or breastfeed"
+```
+
+
+
+### Vomiting everything
+```{r}
+dt %>% count(tb3_vomit, c36_vomit)
+dt$tb3_vomit <- factor(dt$tb3_vomit, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_vomit, "label") <- "Vomiting everything"
+```
+
+
+### Convulsions
+```{r}
+dt %>% count(tb3_convulsion, c36_convulsion)
+dt$tb3_convulsion <- factor(dt$tb3_convulsion, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_convulsion, "label") <- "Convulsions"
+
+dt %>% filter(hhid=="23218") %>% select(tb3_convulsion)
+
+dt %>% filter(c36_convulsion==0 & tb3_convulsion=="yes") %>% select(hhid)
+```
+
+
+### Lethargy or unconscious**
+```{r}
+dt %>% count(tb3_unconscious, c36_unconscious)
+dt$tb3_unconscious <- factor(dt$tb3_unconscious, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_unconscious, "label") <- "Lethargy or unconscious"
+```
+
+
+### Unable to feed well
+```{r}
+dt %>% 
+  filter(age_cal < 60) %>%
+  count(c36_feed, tb3_feed_2m)
+dt$tb3_feed_2m <- factor(dt$tb3_feed_2m, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_feed_2m, "label") <- "Unable to feed well (only <2 months old)"
+
+dt %>% filter(age_cal < 60) %>%
+  filter(c36_feed==0 & tb3_feed_2m=="yes") %>% select(hhid)
+```
+
+
+### Not moving at all or moves only
+```{r}
+dt %>% 
+  filter(age_cal < 60) %>%
+  count(c36_move, tb3_move_2m)
+dt$tb3_move_2m <- factor(dt$tb3_move_2m, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_move_2m, "label") <- "Not moving at all or moves with stimulation only (only <2 months old)"
+
+
+dt %>% filter(age_cal < 60) %>%
+  filter(c36_move==0 & tb3_move_2m=="yes") %>% select(hhid)
+
+```
+
+
+## 5.3 Lung imaging
 
 Lung ultrasound
 ```{r}
-dt %>% count(lus_pneumonia_final, s6_Arm)
-dt$lus_pneumonia_final <- factor(dt$lus_pneumonia_final, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$lus_pneumonia_final, "label") <- "Lung ultrasound"
+dt %>% count(lus_pneumonia_final, tb3_lus_pneumonia_final)
+dt$tb3_lus_pneumonia_final <- factor(dt$tb3_lus_pneumonia_final, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_lus_pneumonia_final, "label") <- "Lung ultrasound"
+
+dt %>% filter((lus_pneumonia_final==0 | is.na(lus_pneumonia_final)) & tb3_lus_pneumonia_final=="yes") %>% select(hhid)
+
 ```
 
 
 Chest radiography
 ```{r}
 dt %>% count(xray_Final_read, xray_Image_date)
-dt$xray_Final_read <- factor(dt$xray_Final_read, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$xray_Final_read, "label") <- "Chest radiography"
+dt$tb3_xray_Final_read <- factor(dt$tb3_xray_Final_read, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_xray_Final_read, "label") <- "Chest radiography"
 ```
 
 
-## 4.4 Clinical care
+## 5.4 Clinical care
 
 **Hospitalized**
 ```{r}
-dt %>% count(s6_Arm, hospitalized)
+dt %>% count(s6_Arm, tb3_hospitalized)
 43/(43+41)
 44/(37+44)
-dt$hospitalized <- factor(dt$hospitalized, levels = c(1,0), labels = c("yes", "no"))
-attr(dt$hospitalized, "label") <- "Hospitalized"
+dt$tb3_hospitalized <- factor(dt$tb3_hospitalized, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_hospitalized, "label") <- "Hospitalized"
 
+```
+
+**Oxygen treatment**
+```{r}
+dt %>% count(tb3_oxyTx)
+dt$tb3_oxyTx <- factor(dt$tb3_oxyTx, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_oxyTx, "label") <- "Oxygen treatment"
+```
+
+**Advanced respiratory supportive care** Any of the following: High flow, NIV (CPAP/BiPAP), mechanical ventilation
+```{r}
+dt %>% count(tb3_advOxyTx)
+dt$tb3_advOxyTx <- factor(dt$tb3_advOxyTx, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_advOxyTx, "label") <- "Advance respiratory supportive care"
+```
+
+
+**Mortality** Death <30 days since diagnosis and/or Verbal Autopsy positive
+```{r}
+dt %>% count(tb3_DeathWithin30days)
+dt$tb3_DeathWithin30days <- factor(dt$tb3_DeathWithin30days, levels = c(1,0), labels = c("yes", "no"))
+attr(dt$tb3_DeathWithin30days, "label") <- "Death <30 days since diagnosis and/or Verbal Autopsy positive"
 ```
 
 
 
-# 5. Create table
+
+# 6. Create table
 
 
 
 ```{r}
-cg1<-compareGroups(s6_Arm ~ irc + AgeGroup + c30_sex + c36_Weight_cal + c36_Malnutrition_zscore_cal,
+cg1<-compareGroups(s6_Arm ~ irc + tb3_AgeGroup + c30_sex + tb3_weight + tb3_malnutrition,
                    data=dt,
                   method = 2, Q1 = 0, Q3 = 1,
                   include.label = T)
 
-cg2<-compareGroups(s6_Arm ~ c36_Fiebre_cal + pulse + c36_rr_cal + oxy + hypoxemia + c36_wheez_cal + 
-                     RDS + c36_indraw + c36_s_indraw + c36_nodding + c36_flaring + c36_grunt +
-                     c36_stridor + c36_wheez + c36_tugging + DangerSign + c36_drink + 
-                     c36_vomit + c36_convulsion + c36_unconscious, 
+cg2<-compareGroups(s6_Arm ~ tb3_fever + tb3_pulse + tb3_rr + tb3_oxy + tb3_hypoxemia + tb3_wheez + 
+                     tb3_RDS + tb3_indraw + tb3_s_indraw_2m + tb3_nodding + tb3_flaring + tb3_grunt +
+                     tb3_stridor + tb3_awheez + tb3_tugging + tb3_retraction + tb3_dangerSign + tb3_drink + 
+                     tb3_vomit + tb3_convulsion + tb3_unconscious + tb3_feed_2m + tb3_move_2m, 
                   data=dt,
                   method = 2, Q1 = 0, Q3 = 1,
                   include.label = T)
 
-cg3<-compareGroups(s6_Arm ~ lus_pneumonia_final + xray_Final_read, 
+cg3<-compareGroups(s6_Arm ~ tb3_lus_pneumonia_final + tb3_xray_Final_read, 
                   data=dt,
                   method = 2, Q1 = 0, Q3 = 1,
                   include.label = T)
 
-cg4<-compareGroups(s6_Arm ~ hospitalized, 
+cg4<-compareGroups(s6_Arm ~ tb3_hospitalized + tb3_oxyTx + tb3_advOxyTx + tb3_DeathWithin30days, 
                   data=dt,
                   method = 2, Q1 = 0, Q3 = 1,
                   include.label = T)
@@ -513,5 +1239,5 @@ cg<-rbind(`Demographic information` = cg1,
 
 tbl<-createTable(cg, hide.no = "No", digits = 0, show.n = T, show.ratio = FALSE)
 print(tbl, which.table = "both", )
-export2xls(tbl, file='2022-11-03_HAPIN_Pneumonia_Table 3.xlsx', which.table = "both") 
+export2xls(tbl, file='2022-12-15_HAPIN_Pneumonia_Table 3.xlsx', which.table = "both") 
 ```

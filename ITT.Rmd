@@ -331,7 +331,7 @@ tab3 <- table1x(df.tab3,
                 "spo2",
                 "factor(hypox)",
                 "factor(wheezcrack)",
-                "factor(respdanger)", 
+                "factor(respdanger)",
                 "factor(indraw)",
                 "factor(nodding)",
                 "factor(flaring)",
@@ -352,79 +352,83 @@ tab3 <- table1x(df.tab3,
                 "factor(grunt2m)",
                 "factor(lus_dx)",
                 "factor(cxr_dx)",
-                "factor(hospitalized)",
+                #"factor(hospitalized)",
                 "factor(oxy_treat)",
                 "factor(adv_respcare)",
                 "factor(death)"
                 ),
                 "factor(s6_arm)")
 
-tab3 <- tab3[,c(1,2)]
+# tab3 <- tab3[,c(1,2)]
+# 
+# tab3 <- tab3[str_detect(rownames(tab3), "\\b(0)\\b") == "FALSE" &
+#                str_detect(rownames(tab3), "\\b(NA)\\b") == "FALSE",]
+# 
+# tab3 <- rowinsert(locations = which(rownames(tab3) %in%
+#                                       c("factor(irc) (Guatemala)",
+#                                         "factor(agecat) (<2m)",
+#                                         "factor(c30_sex) (1)",
+#                                         "factor(lus_dx) (1)",
+#                                         "factor(hospitalized) (1)",
+#                                         "factor(adv_respcare) (1)")),
+#                   rownm = c("irc", "agecat", "sex", "Lung Imaging", "Clinical care", "Outcome"),
+#                   tab = tab3)
+# 
+# 
+# tab3$order <- c(1:nrow(tab3))
+# tab3$order <- NULL
+# rownames(tab3) <- c("International Research Center", "Guatemala", "India", "Peru", "Rwanda",
+#                     "Child’s age (months)", "<2 months", "3-5 months", "6-11 months",
+#                     "Child sex", "Male", "Female",
+#                     "Weight (kg)",
+#                     "Severe acute malnutrition",
+#                     "Up-to-date vaccination status",
+#                     "Temperature >38 C",
+#                     "Average Heart rate", "Average Respiratory rate", "Average SpO2", "Hypoxemia",
+#                     "Wheeze +/- crackles",
+#                     "At least one respiratory danger sign",
+#                     "Chest indrawing",
+#                     "Head nodding", "Persistent nasal flaring",
+#                     "Grunting", "Stridor when calm",
+#                     "Audible wheeze, n (%)",
+#                     "Tracheal tugging", "Intercostal retractions",
+#                     "At least one general danger sign, n (%)",
+#                     "Unable to drink or breastfeed, n (%)", "Vomiting everything, n (%)",
+#                     "Convulsions, n (%)",
+#                     "Lethargy or unconscious, n (%)",
+#                     "At least one neonatal danger sign, n (%)",
+#                     "Unable to feed well, n (%)",
+#                     "Not moving at all or moves only, n (%)",
+#                     "Grunting, n (%)",
+#                     "Severe chest indrawing, n (%)",
+#                     "Lung Imaging",
+#                     "Pneumonia by Lung Ultrasound , n(%)",
+#                     "Pneumonia by Chest Xray , n(%)",
+#                     "Clinical care",
+#                     "Hospitalized, n (%)",
+#                     "Oxygen treatment, n (%)",
+#                     "Advanced respiratory supportive care, n (%)",
+#                     "Outcome",
+#                     "Mortality, n (%)")
+# 
+# tab3 <- tab3 %>%
+#   kable(caption = "Pneumonia case characteristics to be reported",
+#         col.names = c(paste0("Control (N = ", table(df.tab3$s6_arm)[1], ")"),
+#                       paste0("Intervention (N = ", table(df.tab3$s6_arm)[2], ")"))) %>%
+#     kableExtra::kable_classic_2(latex_options = "HOLD_position") %>%
+#   add_indent(c(2:5, 7:9, 11:12, which(rownames(tab3) %in% c("Pneumonia by Lung Ultrasound , n(%)",
+#                     "Pneumonia by Chest Xray , n(%)",
+#                                         "Hospitalized, n (%)",
+#                     "Oxygen treatment, n (%)",
+#                     "Advanced respiratory supportive care, n (%)",
+#           
 
-tab3 <- tab3[str_detect(rownames(tab3), "\\b(0)\\b") == "FALSE" &
-               str_detect(rownames(tab3), "\\b(NA)\\b") == "FALSE",]
-
-tab3 <- rowinsert(locations = which(rownames(tab3) %in%
-                                      c("factor(irc) (Guatemala)",
-                                        "factor(agecat) (<2m)",
-                                        "factor(c30_sex) (1)",
-                                        "factor(lus_dx) (1)",
-                                        "factor(hospitalized) (1)",
-                                        "factor(adv_respcare) (1)")),
-                  rownm = c("irc", "agecat", "sex", "Lung Imaging", "Clinical care", "Outcome"),
-                  tab = tab3)
-
-
-tab3$order <- c(1:nrow(tab3))
-tab3$order <- NULL
-rownames(tab3) <- c("International Research Center", "Guatemala", "India", "Peru", "Rwanda",
-                    "Child’s age (months)", "<2 months", "3-5 months", "6-11 months",
-                    "Child sex", "Male", "Female",
-                    "Weight (kg)",
-                    "Severe acute malnutrition",
-                    "Up-to-date vaccination status",
-                    "Temperature >38 C",
-                    "Average Heart rate", "Average Respiratory rate", "Average SpO2", "Hypoxemia",
-                    "Wheeze +/- crackles",
-                    "At least one respiratory danger sign",
-                    "Chest indrawing",
-                    "Head nodding", "Persistent nasal flaring",
-                    "Grunting", "Stridor when calm",
-                    "Audible wheeze, n (%)",
-                    "Tracheal tugging", "Intercostal retractions",
-                    "At least one general danger sign, n (%)",
-                    "Unable to drink or breastfeed, n (%)", "Vomiting everything, n (%)",
-                    "Convulsions, n (%)",
-                    "Lethargy or unconscious, n (%)",
-                    "At least one neonatal danger sign, n (%)",
-                    "Unable to feed well, n (%)",
-                    "Not moving at all or moves only, n (%)",
-                    "Grunting, n (%)",
-                    "Severe chest indrawing, n (%)",
-                    "Lung Imaging",
-                    "Pneumonia by Lung Ultrasound , n(%)",
-                    "Pneumonia by Chest Xray , n(%)",
-                    "Clinical care",
-                    "Hospitalized, n (%)",
-                    "Oxygen treatment, n (%)",
-                    "Advanced respiratory supportive care, n (%)",
-                    "Outcome",
-                    "Mortality, n (%)")
-
-tab3 <- tab3 %>%
-  kable(caption = "Pneumonia case characteristics to be reported",
-        col.names = c(paste0("Control (N = ", table(df.tab3$s6_arm)[1], ")"),
-                      paste0("Intervention (N = ", table(df.tab3$s6_arm)[2], ")"))) %>%
-    kableExtra::kable_classic_2(latex_options = "HOLD_position") %>%
-  add_indent(c(2:5, 7:9, 11:12, which(rownames(tab3) %in% c("Pneumonia by Lung Ultrasound , n(%)",
-                    "Pneumonia by Chest Xray , n(%)",
-                                        "Hospitalized, n (%)",
-                    "Oxygen treatment, n (%)",
-                    "Advanced respiratory supportive care, n (%)",
-                    "Mortality, n (%)"))), level_of_indent = 1)
-
-tab3
+#"Mortality, n (%)"))), level_of_indent = 1)
+# 
+# tab3
 ```
+
+
 \newpage
 
 ```{r, include=FALSE}

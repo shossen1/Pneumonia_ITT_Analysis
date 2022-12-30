@@ -1,6 +1,6 @@
 
 
-rm(list = ls())
+#rm(list = ls())
 set.seed(443527)
 
 library(tidyverse)
@@ -12,128 +12,140 @@ library(lubridate)
 ###   Data   ###
 ################
 list.files("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/")
-df1 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
-df2 <- readRDS("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/2022-11-13_HAPIN_Primary pneumonia cases.rds") %>% 
+#df1 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
+df1 <- b
+df2 <- readRDS("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/2022-12-15_HAPIN_Primary pneumonia cases.rds") %>% 
   dplyr::filter(Pneumonia == 1) %>% 
   dplyr::rename(flaring = c36_flaring) %>% 
   dplyr::mutate(hhid = as.numeric(hhid))
 
+df2 %>% 
+  dplyr::group_by(s6_Arm) %>% 
+  dplyr::summarise(mean_hr = round(mean(tb3_pulse, na.rm = TRUE)),
+                   mean_rr = round(mean(tb3_rr, na.rm = TRUE)),
+                   mean_spo2 = round(mean(tb3_oxy, na.rm = TRUE)))
+
+
 nn1 <- table(names(df1))
 nn2 <- table(names(df2))
 
-fun.check <- function(var1, var2, concat){
-  if(concat == 1){
-    print(table(df1[[var1]]))
-    print(table(df2[[var2]]))
-  }
-  
-  if(concat == 2){
-    print(mean(df1[[var1]]), na.rm = TRUE)
-    print(mean(df2[[var2]]), na.rm = TRUE)
-  }
-  
+
+fun.check <- function(var1, var2){
   dff1 <- df1
   dff2 <- df2
-  dff1$var <- dff1[[var1]]
-  dff2$var <- dff2[[var2]]
+  dff1$var1 <- dff1[[var1]]
+  dff2$var2 <- dff2[[var2]]
   
-  dff1 <- dff1 %>% dplyr::filter(var == 1)
-  dff2 <- dff2 %>% dplyr::filter(var == 1)
-  print("Present in df1 but absent in df2")
-  #print(dff1$hhid)
-  print(dff1$hhid[!(dff1$hhid %in% dff2$hhid)])
-  print("Present in df2 but absent in df1")
-  #print(dff2$hhid)
-  print(dff2$hhid[!(dff2$hhid %in% dff1$hhid)])
+  print(table(dff1$var1, dff1$s6_arm))
+  print(table(dff2$var2, dff2$s6_Arm))
+  
+  dff1 <- dff1 %>% dplyr::filter(var1 == 1) %>% dplyr::select(hhid, var1, date)
+  dff2 <- dff2 %>% dplyr::filter(var2 == 1) %>% dplyr::select(hhid, var2, Visit_date_cal)
+  
+  dff <- full_join(dff1, dff2, by = "hhid") %>% distinct()
+
+  return(dff)
 }
 
-# Shakir will check
-# Continuous data
-
-fun.check("malnutrition", "c36_Malnutrition_zscore_cal", 1)
-fun.check("neodanger", "c36_NeoDangerSigns_cal", 1) # 16130 33240
-fun.check("danger", "c36_AllDangerSigns_cal", 1) # 
-fun.check("fever", "c36_Fiebre_cal", 1) # 23578: Shakir correct ; 13019 is in Farenheight
-
-
-
-fun.check("retraction", "c36_retraction", 1) # 33547 delete the subhospital c36 data
-fun.check("convulsion", "c36_convulsion", 1) # 23218 the patient was case on 02/07 but had convulsion on 02/09. Laura will correct.
-fun.check("nodding", "c36_nodding", 1) # 23260 33547 # Laura will correct
-fun.check("wheez", "c36_wheez", 1) # 23260
-fun.check("wheezcrack", "c36_wheez_cal", 1) #  23260
-fun.check("tugging", "c36_tugging", 1) # 23260 33166
-fun.check("stridor", "c36_stridor", 1) # 23260
-fun.check("lus_dx", "lus_pneumonia_final", 1)# 23218 33166
-fun.check("indraw", "c36_indraw", 1)
+# fun.check("feed2m", "tb3_feed_2m")
+# fun.check("move2m", "tb3_move_2m")
+# fun.check("indraw", "tb3_indraw")
+# fun.check("nodding", "tb3_nodding")
+# fun.check("malnutrition", "tb3_malnutrition")
+# fun.check("wheezcrack","tb3_wheez")
 
 
 
-View(df.c36a %>% filter(hhid %in% c(23578)) %>% dplyr::select(hhid, contains("temp"),contains("date")))
-View(df.c36 %>% filter(hhid %in% c(23578)) %>% dplyr::select(hhid, contains("temp"),contains("date")))
+fun.check_cont <- function(var1, var2){
+df1$date <- as.Date(df1$date) 
+df2 <- df2 %>% dplyr::rename(date = Visit_date_cal)
+
+  d <- full_join(df1[,c("hhid", var1, "date")],
+                 df2[,c("hhid", var2, "date")], by = c("hhid", "date"))
+  
+d$var1 <- d[[var1]]
+d$var2 <- d[[var2]]
+  
+d <- d %>% 
+  dplyr::select(hhid, var1, var2, date) %>%  
+  dplyr::mutate(var1 = ifelse(is.na(var1), 0, var1)) %>% 
+  dplyr::mutate(var2 = ifelse(is.na(var2), 0, var2)) %>%
+  dplyr::mutate(diff = round(var1 - var2)) %>% 
+  dplyr::filter(diff != 0)
+  return(d)
+}
+
+#d <- fun.check_cont("c36a_hr_high","tb3_pulse")
+#d <- fun.check_cont("rr","tb3_rr")
+d <- fun.check_cont("spo2","tb3_oxy")
+View(d)
+
+d <- d %>%
+  group_by(hhid) %>%
+  mutate(n = 1:n()) %>%
+  filter(!(hhid %in% c(16036, 23218, 23260, 23578, 33095, 33314)))
 
 
-# fun.check("rr", "c36_rr_cal", 2) # 
-# 
-# 
-# df2 <- df2 %>%
-#   mutate(agecat = factor(case_when(
-#     interval(c30_dob, Visit_date_cal)/dmonths() < 2 ~ "<2m",
-#     interval(c30_dob, Visit_date_cal)/dmonths() < 6 ~ "2-6m",
-#     interval(c30_dob, Visit_date_cal)/dmonths() < 12 ~ "6-12")))
-# 
-# df1$hhid[df1$agecat != df2$AgeGroup]
-# 
-# dd <- anti_join(df1, df2, by = c("hhid", "agecat")) 
-# 
-# fun.check("agecat", "AgeGroup", 1) 
-# 
-# 
-# mean(df1$rr, na.rm = T); mean(df2$c36_rr_cal, na.rm = T)
+# 33119, 33166
 
 
-# PneumoDt <- PneumoDt %>%
-#   mutate(c40oxy = matrixStats::rowMins(as.matrix(PneumoDt[,c("c40_oxy","c40_oxy_2","c40_oxy_3")]), na.rm=T),
-#          c40oxy = replace(c40oxy, c40oxy=="Inf", NA))
-# 
-# PneumoDt <- PneumoDt %>%
-#   mutate(oxy = matrixStats::rowMins(as.matrix(PneumoDt[,c("c36_oxy_ave", "c40oxy")]), na.rm=T),
-#          oxy = replace(oxy, oxy=="Inf", NA))
+#dl <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_05-30-2022.csv")
 
-# PneumoDt <- PneumoDt %>%
-#   mutate(hypoxemia = case_when(c36_hipoxemia_cal==1 | c40_hipoxemia_cal==1 | c41_hipoxemia_cal==1 ~ 1,
-#                                c36_hipoxemia_cal==0 | c40_hipoxemia_cal==0 | c41_hipoxemia_cal==0~0))
+id = 45024
+#print(df.tab3$date[df.tab3$hhid == id])
+# View(dl %>% filter(hhid %in% c(id)) %>% dplyr::select(hhid, contains("spo2"),contains("date"))
+#      %>% distinct())
 
+View(df.c36 %>% filter(hhid %in% c(id)) %>% dplyr::select(hhid, contains("move"),contains("date")) 
+     %>% distinct())
 
-# PneumoDt <- PneumoDt %>%
-#   mutate(RDS = case_when(
-#     c36_indraw==1 | c36_s_indraw==1 | c36_nodding==1 | c36_flaring ==1 | c36_grunt==1 | 
-#       c36_stridor==1 | c36_wheez==1 | c36_tugging==1 | c36_retraction==1 ~ 1,
-#     c36_indraw==0 | c36_s_indraw==0 | c36_nodding==0 | c36_flaring ==0 | c36_grunt==0 | 
-#       c36_stridor==0 | c36_wheez==0 | c36_tugging==0 | c36_retraction==0 ~ 0))
+View(df.c36a %>% filter(hhid %in% c(id)) %>% dplyr::select(hhid, contains("move"),contains("date")) 
+     %>% distinct())
 
-# 16130 missing in my dataset 
-
-#                   "factor(malnutrition)", ## Shakir will correct malnutrition
-#                   "factor(vax_u2d)", ## skip it
-#                   "factor(fever)", 23260, 13019 23578
-#                   "c36a_hr", 
-#                   "rr", # c36_rr_cal not rounded
-#                   "spo2",
-#                   "factor(hypox)",
-#                   "factor(respdanger)", 
-#                   "factor(feed2m)",
-#                   "factor(sindraw2m)",
-#                   "factor(grunt2m)",
-#                   "factor(lus_dx)", #lus_pneumonia_final
-#                   "factor(cxr_dx)", #xray_Final_read
-#                   "factor(hospitalized)",
-#                   "factor(oxy_treat)",
-#                   "factor(adv_respcare)",
-#                   "factor(death)"
+View(df.c40 %>% filter(hhid %in% c(id)) %>% dplyr::select(hhid, contains("move"),contains("date")) 
+     %>% distinct())
 
 
 
+
+### Heart rate
+# 33166: Pulse was 205 on 2019-10-20
+# 23260: Pulse was 169 on 2020-01-29
+
+### Respiratory rate
+# 33119: It was case on 2019-07-05 and RR was 59.5 breath/min. 
+#        However, on 2019-07-06, the patiend had RR 64.5 breaths/min
+# 33166: It was case on 2019-10-17. RR was 72 breaths/min on 2019-10-20.
+
+###SpO2
+# 13306: Mean SpO2 was 93 from C40 form #
+# 15055: Mean SpO2 was 96 from C40 form #
+# 16065: Mean SpO2 was 99 from C40 form #
+# 16092: Mean SpO2 was 97 from C40 form #
+# 23034: Mean SpO2 was 97 from C40 form
+# 23603: Mean SpO2 was 92 from C40 form #
+# 23748: Mean SpO2 was 93 from C40 form #
+# 33080: Mean SpO2 was 80 from C40 form #
+# 33231: Mean SpO2 was 97 from C40 form #
+# 33535: Mean SpO2 was 94 from C40 form #
+# 33549: Mean SpO2 was 92 from C40 form #
+
+# 23260: Head nodding was positive on 2020-01-29
+# 33314: Retraction was positive on 2019-09-17
+
+# Unable to feed(<2m) 
+# 45024: Unable to feed was positive on 2019-09-24 from form C36. It was case on 2019-09-20. So, it was >3days.
+# Also, Unable to feed was positive on 2019-09-22 from form C40. However, c40_feed was not use to define this variable 
+# in the shell table
+
+# Unable to move(<2m): For 45024, c36_move was positive on 2019-09-24, 4 days after it became case.
+
+
+
+
+
+# How oxycals were calculated? Check
+# Wt and height replaced by _R and _chart?
 
 
 

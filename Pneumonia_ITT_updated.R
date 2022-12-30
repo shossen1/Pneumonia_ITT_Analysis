@@ -13,6 +13,7 @@ library(anthro)
 library(mice)
 library(weathermetrics)
 library(svMisc)
+library(data.table)
 
 ### Load datasets
 getwd()
@@ -39,7 +40,7 @@ df.c36a$c36a_date <- ifelse(as.Date(df.c36a$c36a_h_date) < as.Date(df.c36a$c36a_
                             as.character(df.c36a$c36a_h_date), as.character(df.c36a$c36a_date))
 
 ### There were two forms. Keeping the form from hospital visit
-df.c36a <- df.c36a %>% dplyr::filter(!(hhid == 33547 & c36a_location == "CAP Sanyuyo"))
+#df.c36a <- df.c36a %>% dplyr::filter(!(hhid == 33547 & c36a_location == "CAP Sanyuyo"))
 
 ### Recoding and renaming data
 df.c36$c36_crackle <- ifelse(df.c36$c36_crackle == 98, NA, df.c36$c36_crackle)
@@ -62,9 +63,9 @@ df.exit <- df.exit %>%
 df.nf$e3_date_exit_c <- ifelse(!is.na(df.nf$e2_death_date), df.nf$e2_death_date, df.nf$e3_date_exit_c)
 
 # Date format change:
-df.nf$e3_date_exit_c <- as.Date(df.nf$e3_date_exit_c, format = "%Y-%m-%d")
-df.nf$e2_death_date <- as.Date(df.nf$e2_death_date, format = "%Y-%m-%d")
-df.nf$c30_dob <- as.Date(df.nf$c30_dob, format = "%Y-%m-%d")
+df.nf$e3_date_exit_c <- lubridate::as_date(df.nf$e3_date_exit_c)
+df.nf$e2_death_date <- lubridate::as_date(df.nf$e2_death_date)
+df.nf$c30_dob <- lubridate::as_date(df.nf$c30_dob)
 
 ###################################
 ###   Person-time calculation   ###
@@ -90,7 +91,7 @@ df.pt <- full_join(df.nf1, df.nf2, by = "hhid") %>%
 
 df.pt$pt <- ifelse(is.na(df.pt$pt) & df.pt$fromleap >=0 & df.pt$fromleap <= 366, 365,
                    ifelse(is.na(df.pt$pt) & (df.pt$fromleap <0 | df.pt$fromleap > 366), 364, df.pt$pt))
-  
+
 df.pt$pt <- df.pt$pt + 1
 
 
@@ -121,14 +122,15 @@ dfx <- full_join(df.pt[,c("hhid", "pt"),],
 
 dfx$diff <- dfx$final_pneupersontime - dfx$pt 
 
-# data = df.c40[df.c40$hhid == "Pneumoniai_0577",]
-# var1 = "c40_oxy"
-# var2 = "c40_oxy_2"
-# var3 = "c40_oxy_3"
-# datevar = "c40_date_arrive"
-# newname = "c40_oxym"
-# prefix = "c40"
-# lowest = 1
+data = df.c40
+var1 = "c40_oxy"
+var2 = "c40_oxy_2"
+var3 = "c40_oxy_3"
+datevar = "c40_date_arrive"
+newname = "c40_oxym"
+prefix = "c40"
+hypox = 1
+lowest = 1
 
 # Function to create hypoxia variable
 fun.average <- function(data, datevar, prefix, var1, var2, var3, newname, hypox, lowest = NULL){
@@ -159,22 +161,22 @@ fun.average <- function(data, datevar, prefix, var1, var2, var3, newname, hypox,
   # Merging the newly created value with the original data
   data <- left_join(data, ds[,c("hhid", datevar, newname)], by = c("hhid", datevar))
   
-if(hypox == 1){  
-  # Hypoxia based on saturation
-  data[[paste0(prefix, "_hypox")]] <- ifelse(data$irc == "Peru" & data[[newname]] <= 86, 1,
-                                             ifelse(data$irc %in% c("Guatemala", "India", "Rwanda") &
-                                                      data[[newname]] <= 92, 1,
-                                                    ifelse(is.na(data[[newname]]), NA, 0)))
-  return(data)
-}
+  if(hypox == 1){  
+    # Hypoxia based on saturation
+    data[[paste0(prefix, "_hypox")]] <- ifelse(data$irc == "Peru" & data[[newname]] <= 86, 1,
+                                               ifelse(data$irc %in% c("Guatemala", "India", "Rwanda") &
+                                                        data[[newname]] <= 92, 1,
+                                                      ifelse(is.na(data[[newname]]), NA, 0)))
+    return(data)
+  }
   if(hypox != 1){
     return(data)
   }
 }
 
 #var = "rr"
-fun.combine <- function(var, small = NULL){
-  newvar <- as.numeric(apply(dl[,c(paste0("c36_",var), paste0("c36a_",var))], 1, max, na.rm = TRUE))
+fun.combine <- function(data, var, small = NULL){
+  newvar <- as.numeric(apply(data[,c(paste0("c36_",var), paste0("c36a_",var))], 1, max, na.rm = TRUE))
   newvar <- ifelse(newvar %in% c("Inf", "-Inf"), NA, newvar)
   return(newvar)
 }
@@ -189,44 +191,16 @@ fun.recoding <- function(data){
     data[[vv]] <- ifelse(data[[vv]] == "Not documented", NA, data[[vv]])
     data[[vv]] <- ifelse(data[[vv]] == "", NA, data[[vv]])
   } 
-return(data)
+  return(data)
 }
 df.c40 <- fun.recoding(df.c40)
 
-dtt <- df.c40 %>% 
-  dplyr::group_by(hhid, c40_date_arrive) %>%
-  dplyr::mutate(n = n()) %>%
-  dplyr::filter(n == 2) %>%
-  dplyr::distinct(hhid)
-
+### Dropping 1 row with missing date (hhid = 23287)
 df.c40 <- df.c40 %>% 
-  dplyr::filter(!is.na(c40_date_arrive)) %>% # Dropping 1 row with missing date
-  dplyr::arrange(hhid, c40_date_arrive, c40_date) %>% # Arranging based on c40_date
-  dplyr::distinct(hhid, c40_date_arrive, .keep_all = TRUE) # Keeping the first one of the duplicated IDs but have to check which one is the case
+  dplyr::filter(!is.na(c40_date_arrive)) 
 
 ### Hypoxia variable generation
 df.c40 <- fun.average(df.c40, "c40_date_arrive", "c40", "c40_oxy", "c40_oxy_2", "c40_oxy_3", "c40_oxym", hypox = 1, lowest = 1)
-
-### List of 
-df.c40_h <- df.c40 %>%
-  dplyr::filter(c40_hypox == 1) %>%
-  dplyr::select(hhid, c40_date_arrive, c40_hypox) %>%
-  left_join(df.nf[,c("hhid", "c36_date")], by = "hhid") %>%
-  left_join(df.c36a[,c("hhid", "c36a_date")], by = "hhid") %>%
-  distinct() %>% 
-  dplyr::mutate(date = ifelse(is.na(c36_date)|c36_date == "", c36a_date, c36_date)) %>% 
-  dplyr::mutate(timediff = difftime(as.Date(c40_date_arrive), as.Date(date), units = "days")) %>%
-  dplyr::filter(!is.na(timediff) & timediff >= (-3) & timediff <=3) %>% # Keeping the earliest one but have to check which one is case
-  dplyr::arrange(hhid, timediff) %>%
-  dplyr::distinct(hhid, .keep_all = TRUE) %>%
-  dplyr::mutate(hypoxx = 1) %>%
-  dplyr::select(hhid, c40_date_arrive, hypoxx)
-
-df.c40 <- left_join(df.c40, df.c40_h, by = c("hhid", "c40_date_arrive"))
-df.c40$c40_hypox <- ifelse(df.c40$hypoxx == 1, 1, 0)
-df.c40$c40_hypox <- replace(df.c40$c40_hypox, is.na(df.c40$c40_hypox), 0)
-df.c40$hypoxx <- NULL
-table(df.c40$c40_hypox)
 
 # advanced respiratory support care variable generation
 drc <- df.c40 %>%
@@ -277,7 +251,7 @@ df.c36$c36_rr <- ifelse(df.c36$c36_rr == "NaN", NA, df.c36$c36_rr)
 
 # Fast-breathing
 df.c36$c36_fastbreath <- ifelse(df.c36[["c36_age"]] <2 & df.c36$c36_rr >= 60, 1,
-                          ifelse(df.c36[["c36_age"]] >= 2 & df.c36[["c36_age"]] <= 12 & df.c36$c36_rr >=50, 1, 0))
+                                ifelse(df.c36[["c36_age"]] >= 2 & df.c36[["c36_age"]] <= 12 & df.c36$c36_rr >=50, 1, 0))
 
 for(ii in c("c36_diff_breath", "c36_fastbreath", "c36_nodding", "c36_flaring", "c36_grunt", "c36_wheez",
             "c36_stridor", "c36_tugging", "c36_indraw", "c36_s_indraw", "c36_retraction")){
@@ -300,38 +274,38 @@ df.c36$c36_dyspnea <- ifelse(df.c36$c36_diff_breath == 1 | #
                                df.c36$c36_retraction == 1, 1, 0) #
 
 df.c36$c36_respdanger <- ifelse(df.c36$c36_nodding == 1 | 
-                               df.c36$c36_flaring == 1 | 
-                               df.c36$c36_grunt == 1 | 
-                               df.c36$c36_wheez == 1 | 
-                               df.c36$c36_stridor == 1 | 
-                               df.c36$c36_tugging == 1 | 
-                               df.c36$c36_indraw == 1 | 
-                               df.c36$c36_s_indraw == 1 | 
-                               df.c36$c36_retraction == 1, 1, 0) 
+                                  df.c36$c36_flaring == 1 | 
+                                  df.c36$c36_grunt == 1 | 
+                                  df.c36$c36_wheez == 1 | 
+                                  df.c36$c36_stridor == 1 | 
+                                  df.c36$c36_tugging == 1 | 
+                                  df.c36$c36_indraw == 1 | 
+                                  df.c36$c36_s_indraw == 1 | 
+                                  df.c36$c36_retraction == 1, 1, 0) 
 
 table(df.c36$c36_dyspnea)
 
 for(ii in c("c36_drink", "c36_vomit", "c36_convulsion", "c36_unconscious", "c36_feed", "c36_move")){
- print(ii)
- print(table(df.c36[[ii]]))
+  print(ii)
+  print(table(df.c36[[ii]]))
 }
 
 df.c36$c36_danger <- ifelse(df.c36$c36_drink == 1 |
-                          df.c36$c36_vomit == 1 |
-                          df.c36$c36_convulsion == 1 |
-                          df.c36$c36_convulsion_2 == 1 |
-                          df.c36$c36_unconscious == 1 |
-                          df.c36$c36_stridor == 1 |
-                          (df.c36$c36_feed == 1 & df.c36$c36_age < 2) |
-                          (df.c36$c36_move == 1 & df.c36$c36_age < 2) |
-                          (df.c36$c36_s_indraw == 1 & df.c36$c36_age < 2) |
-                          (df.c36$c36_grunt == 1 & df.c36$c36_age < 2), 1, 0)
-
-df.c36$c36_neodanger <- ifelse((df.c36$c36_feed == 1 & df.c36$c36_age < 2) |
+                              df.c36$c36_vomit == 1 |
+                              df.c36$c36_convulsion == 1 |
+                              df.c36$c36_convulsion_2 == 1 |
+                              df.c36$c36_unconscious == 1 |
+                              df.c36$c36_stridor == 1 |
+                              (df.c36$c36_feed == 1 & df.c36$c36_age < 2) |
                               (df.c36$c36_move == 1 & df.c36$c36_age < 2) |
                               (df.c36$c36_s_indraw == 1 & df.c36$c36_age < 2) |
                               (df.c36$c36_grunt == 1 & df.c36$c36_age < 2), 1, 0)
-  
+
+df.c36$c36_neodanger <- ifelse((df.c36$c36_feed == 1 & df.c36$c36_age < 2) |
+                                 (df.c36$c36_move == 1 & df.c36$c36_age < 2) |
+                                 (df.c36$c36_s_indraw == 1 & df.c36$c36_age < 2) |
+                                 (df.c36$c36_grunt == 1 & df.c36$c36_age < 2), 1, 0)
+
 
 table(df.c36$c36_danger)
 table(df.c36$c36_malnutrition)
@@ -354,7 +328,6 @@ df.c36$c36_temp <- ifelse(df.c36$c36_temp > 50,
                           (df.c36$c36_temp - 32)*(5/9), df.c36$c36_temp)
 
 table(df.c36$c36_temp)
-
 df.c36 <- df.c36 %>% distinct()
 
 
@@ -395,14 +368,14 @@ df.c36a$c36a_dyspnea <- ifelse(df.c36a$c36a_diff_breath == 1 |
                                  df.c36a$c36a_retraction == 1, 1, 0)
 
 df.c36a$c36a_respdanger <- ifelse(df.c36a$c36a_nodding == 1 |
-                                 df.c36a$c36a_flaring == 1 |
-                                 df.c36a$c36a_grunt == 1 |
-                                 df.c36a$c36a_wheez == 1 |
-                                 df.c36a$c36a_stridor == 1 |
-                                 df.c36a$c36a_tugging == 1 |
-                                 df.c36a$c36a_indraw == 1 |
-                                 df.c36a$c36a_s_indraw == 1 |
-                                 df.c36a$c36a_retraction == 1, 1, 0)
+                                    df.c36a$c36a_flaring == 1 |
+                                    df.c36a$c36a_grunt == 1 |
+                                    df.c36a$c36a_wheez == 1 |
+                                    df.c36a$c36a_stridor == 1 |
+                                    df.c36a$c36a_tugging == 1 |
+                                    df.c36a$c36a_indraw == 1 |
+                                    df.c36a$c36a_s_indraw == 1 |
+                                    df.c36a$c36a_retraction == 1, 1, 0)
 
 table(df.c36a$c36a_dyspnea)
 
@@ -429,9 +402,9 @@ df.c36a$c36a_danger <- ifelse(df.c36a$c36a_drink == 1 |
 table(df.c36a$c36a_danger)
 
 df.c36a$c36a_neodanger <- ifelse((df.c36a$c36a_feed == 1 & df.c36a$c36a_age < 2) |
-                                (df.c36a$c36a_move == 1 & df.c36a$c36a_age < 2) |
-                                (df.c36a$c36a_s_indraw == 1 & df.c36a$c36a_age < 2) |
-                                (df.c36a$c36a_grunt == 1 & df.c36a$c36a_age < 2), 1, 0)
+                                   (df.c36a$c36a_move == 1 & df.c36a$c36a_age < 2) |
+                                   (df.c36a$c36a_s_indraw == 1 & df.c36a$c36a_age < 2) |
+                                   (df.c36a$c36a_grunt == 1 & df.c36a$c36a_age < 2), 1, 0)
 
 df.c36a$c36a_feed2m <- ifelse((df.c36a$c36a_feed == 1 & df.c36a$c36a_age < 2), 1, 0)
 df.c36a$c36a_move2m <- ifelse((df.c36a$c36a_move == 1 & df.c36a$c36a_age < 2), 1, 0)
@@ -462,11 +435,7 @@ table(df.c36a$c36a_temp)
 
 
 df.c36a <- fun.average(df.c36a, "c36a_h_date", "c36a", "c36a_pulse_60_R", "c36a_pulse_90_R",
-                          "c36a_pulse_120_R", "c36a_hr", hypox = 0)
-
-###################################################################################################
-# df.c36a$c36a_hr[df.c36a$hhid == 33547] <- NA
-# df.c36a$c36a_oxym[df.c36a$hhid == 33547] <- NA
+                       "c36a_pulse_120_R", "c36a_hr", hypox = 0)
 
 df.c36a <- df.c36a %>% 
   distinct() %>%
@@ -474,33 +443,24 @@ df.c36a <- df.c36a %>%
   dplyr::filter(!(hhid == 33018 & c36a_date == "2020-01-06")) %>%
   dplyr::filter(!(hhid == 33126 & c36a_date == "2019-10-01"))
 
-
-df.c36ax <- df.c36a %>% dplyr::filter(hhid == 33018)
-
-# Pneumoniai_2883: Two different time on same day, incorrect c36a_hr and c36a_oxym input
-# Pneumoniai_1125: 8 different visits
-# Pneumoniai_1914: Consecutive visits on 2020-01-06 and 2020-01-07
-# Pneumoniai_2668: Consecutive visits on 2019-10-01 and 2019-10-02
-###################################################################################################
-
 #########################
 ###   Checking date   ###
 #########################
 # This function calculate the time difference between c30_dob to the date of the form and add a variable. eg: c36_from_dob
 fun.datecheck <- function(data, datevar, prefix){
-df.dob <- df.nf %>% 
-  dplyr::select(hhid, c30_dob) %>%
-  dplyr::filter(!is.na(c30_dob)) %>%
-  dplyr::distinct(hhid, .keep_all = TRUE)
-
-data$datevar <- data[[datevar]]
-data <- dplyr::left_join(data, df.dob, by = "hhid") %>%
-  dplyr::mutate(datevar = as.Date(datevar),
-                c30_dob = as.Date(c30_dob),
-                from_dob = difftime(datevar, c30_dob, units = "days"))
-data$datevar <- NULL
-colnames(data)[which(colnames(data) == "from_dob")] <- paste0(prefix, "_from_dob")
-return(data)
+  df.dob <- df.nf %>% 
+    dplyr::select(hhid, c30_dob) %>%
+    dplyr::filter(!is.na(c30_dob)) %>%
+    dplyr::distinct(hhid, .keep_all = TRUE)
+  
+  data$datevar <- data[[datevar]]
+  data <- dplyr::left_join(data, df.dob, by = "hhid") %>%
+    dplyr::mutate(datevar = as.Date(datevar),
+                  c30_dob = as.Date(c30_dob),
+                  from_dob = difftime(datevar, c30_dob, units = "days"))
+  data$datevar <- NULL
+  colnames(data)[which(colnames(data) == "from_dob")] <- paste0(prefix, "_from_dob")
+  return(data)
 }
 df.c36 <- fun.datecheck(df.c36, "c36_date", "c36")
 df.c36a <- fun.datecheck(df.c36a, "c36a_h_date", 'c36a')
@@ -552,12 +512,12 @@ df.c36_anthro2 <-
 df.c36_anthro <- cbind(df.c36_anthro, df.c36_anthro2)
 df.c36_anthro$c36_malnutrition_der <- ifelse(df.c36_anthro$zwfl < (-3), 1, 0)
 df.c36_anthro$c36_malnutrition_der <- ifelse(is.na(df.c36_anthro$c36_ht) &
-                                           df.c36_anthro$c36_age_days >= 60 &
-                                           df.c36_anthro$zwei < (-3), 1, df.c36_anthro$c36_malnutrition_der)
+                                               df.c36_anthro$c36_age_days >= 60 &
+                                               df.c36_anthro$zwei < (-3), 1, df.c36_anthro$c36_malnutrition_der)
 
 df.c36_anthro$c36_malnutrition_der <- ifelse(df.c36_anthro$c36_age_days < 60 &
-                                           (df.c36_anthro$zwei < (-3) |
-                                           df.c36_anthro$zwfl < (-3)), 1, df.c36_anthro$c36_malnutrition_der)
+                                               (df.c36_anthro$zwei < (-3) |
+                                                  df.c36_anthro$zwfl < (-3)), 1, df.c36_anthro$c36_malnutrition_der)
 
 df.c36 <- left_join(df.c36, df.c36_anthro[,c("hhid", "c36_malnutrition_der", "c36_from_dob")], by = c("hhid", "c36_from_dob"))
 
@@ -588,70 +548,14 @@ df.c36a_anthro2 <-
 df.c36a_anthro <- cbind(df.c36a_anthro, df.c36a_anthro2)
 df.c36a_anthro$c36a_malnutrition_der <- ifelse(df.c36a_anthro$zwfl < (-3), 1, 0)
 df.c36a_anthro$c36a_malnutrition_der <- ifelse(is.na(df.c36a_anthro$c36a_ht) &
-                                            df.c36a_anthro$c36a_age_days >= 60 &
-                                            df.c36a_anthro$zwei < (-3), 1, df.c36a_anthro$c36a_malnutrition_der)
+                                                 df.c36a_anthro$c36a_age_days >= 60 &
+                                                 df.c36a_anthro$zwei < (-3), 1, df.c36a_anthro$c36a_malnutrition_der)
 
 df.c36a_anthro$c36a_malnutrition_der <- ifelse(df.c36a_anthro$c36a_age_days < 60 &
-                                            (df.c36a_anthro$zwei < (-3) |
-                                               df.c36a_anthro$zwfl < (-3)), 1, df.c36a_anthro$c36a_malnutrition_der)
+                                                 (df.c36a_anthro$zwei < (-3) |
+                                                    df.c36a_anthro$zwfl < (-3)), 1, df.c36a_anthro$c36a_malnutrition_der)
 
 df.c36a <- left_join(df.c36a, df.c36a_anthro[,c("hhid", "c36a_malnutrition_der", "c36a_from_dob")], by = c("hhid", "c36a_from_dob"))
-
-
-# ##########################################
-# ###   Dropping visits within 14 days   ###
-# ##########################################
-# # data <- df.c40
-# # datevar <- "c40_date_arrive"
-# 
-# fun.repeatvisit <- function(data, datevar){
-#   
-# data$datevar <- data[[datevar]]
-# data <- data %>%
-#   dplyr::group_by(hhid) %>%
-#   dplyr::distinct(hhid, datevar, .keep_all = TRUE) %>%
-#   dplyr::mutate(visit = n()) %>%
-#   dplyr::arrange(hhid, datevar)
-# 
-# data$gap <- NA
-# dd <- NULL
-# for(i in unique(data$hhid[data$visit > 1])){
-#   d <- data %>%
-#     dplyr::filter(hhid == i) %>%
-#     dplyr::select(hhid, datevar, visit, gap)
-#   
-#   d$gap[2:nrow(d)] <- diff(as.Date(d$datevar))
-#   dd <- rbind(dd, d)
-# }
-# 
-# dd$rept <- ifelse(is.na(dd$gap), 0, 
-#                   ifelse(dd$gap > 14, 0,
-#                          ifelse(dd$visit == 2 & dd$gap < 14, 1, NA)))
-# 
-# d2 <- dd %>%
-#   dplyr::filter(is.na(rept)) %>%
-#   dplyr::group_by(hhid) %>%
-#   dplyr::mutate(visit = n()) %>%
-#   dplyr::mutate(cumgap = cumsum(replace_na(gap, 0)))
-# 
-# d2$rept <- ifelse(d2$visit == 1, 1,
-#                   ifelse(d2$visit >1 & d2$cumgap <= 14, 1, 0))
-# d2$cumgap <- NULL
-# dd <- rbind(dd[!is.na(dd$rept),], d2)
-# dd <- dd %>%
-#   dplyr::select(hhid, datevar, rept) %>%
-#   dplyr::distinct()
-# 
-# data <- left_join(data, dd, by = c("hhid", "datevar")) %>%
-#   dplyr::filter(rept == 0 | is.na(rept)) %>%
-#   dplyr::select(-datevar, -visit, -rept, -gap)
-# return(data)
-# }
-# 
-# df.c36 <- fun.repeatvisit(df.c36, "c36_date")
-# df.c36a <- fun.repeatvisit(df.c36a, "c36a_h_date")
-# df.c40 <- fun.repeatvisit(df.c40, "c40_date_arrive")
-# df.c41 <- fun.repeatvisit(df.c41, "c41_date_admit")
 
 ########################
 ###   CXR cleaning   ###
@@ -665,9 +569,9 @@ df.cxr <- df.cxr %>%
 
 df.cxr$cxr_dx <- ifelse(df.cxr$cxr_dx == "pneumonia", 1, NA)
 
-##############################
-###   Pneumonia cleaning   ###
-##############################
+########################
+###   LUS cleaning   ###
+########################
 df.lus <- df.lus %>% 
   dplyr::select(hhid, date, pneumonia_final) %>% 
   dplyr::rename(lus_date = date,
@@ -695,9 +599,9 @@ df.va.date <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/2022
 
 df.va <- left_join(df.va, df.va.date, by = "hhid")
 
-##########################
-###   Linking visits   ###
-##########################
+######################################
+###   Subset of data for Linking   ###
+######################################
 df.c36_v <- df.c36 %>%
   dplyr::select(hhid, c36_date, c36_cough, c36_oxym, c36_hypox, c36_oxy_route,
                 c36_rr, c36_diff_breath, c36_fastbreath, c36_dyspnea, c36_danger, c36_malnutrition_der, c36_wt,
@@ -762,17 +666,15 @@ df.c36a_v <- df.c36a %>%
   dplyr::mutate(form = "c36a") %>%
   distinct()
 
-write.csv(df.c36_v, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c36_v.csv")
-write.csv(df.c36a_v, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c36a_v.csv")
-
-write.csv(df.c40, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c40_v.csv")
-write.csv(df.c41, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c41_v.csv")
-
 df.c40$date <- df.c40$c40_date_arrive
+df.c40$form <- "c40"
 
+##########################
+###   Linking visits   ###
+##########################
 dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid", "date", "form", "wt")) %>%
-  dplyr::full_join(df.c40[,c("hhid", "c40_date_arrive", "date", "c40_hypox", "c40_temp", "c40_oxym")],
-                             by = c("hhid", "date")) %>% 
+  dplyr::full_join(df.c40[,c("hhid", "c40_date_arrive", "date", "c40_hypox", "c40_temp", "c40_oxym", "form")],
+                   by = c("hhid", "date", "form")) %>% 
   dplyr::arrange(hhid, date) %>%
   dplyr::group_by(hhid) %>%
   dplyr::mutate(visit = 1:n()) %>% 
@@ -799,47 +701,198 @@ dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid", "date", "form", "wt")) %>%
   dplyr::full_join(df.va, by = c("hhid", "date"))
 
 
-df.c40.dl <- df.c40 %>% 
-  dplyr::select(hhid, c40_date_arrive, c40_adcare, c40_oxygen, c40_oxygen_2, contains("c40_receive")) %>% 
-  dplyr::rename(date = c40_date_arrive) %>% 
+df.c40.dl <- df.c40 %>%
+  dplyr::select(hhid, c40_date_arrive, c40_adcare, c40_oxygen, c40_oxygen_2, contains("c40_receive")) %>%
+  dplyr::rename(date = c40_date_arrive) %>%
   dplyr::filter(c40_adcare == 1)
 
-df.c41.dl <- df.c41 %>% 
+df.c41.dl <- df.c41 %>%
   dplyr::select(hhid, c41_date_admit, c41_discharge_date,
                 c41_adcare, c41_oxygen_supplement, c41_oxygen_2_supplement,
                 c41_oxygen_positive, c41_oxygen_2_positive,
                 c41_oxygen_mechanical, c41_oxygen_2_mechanical,
                 c41_oxygen_2_nasal,
-                c41_wheeze, c41_crackle, c41_dilator, c41_cxray, c41_diagnosis, c41_diagnosis_2) %>% 
-  dplyr::mutate(date = c41_date_admit) %>% 
+                c41_wheeze, c41_crackle, c41_dilator, c41_cxray, c41_diagnosis, c41_diagnosis_2) %>%
+  dplyr::mutate(date = c41_date_admit) %>%
   dplyr::filter(c41_adcare == 1)
 
-dl <- dl %>% 
-  dplyr::full_join(df.c40.dl, by = c("hhid", "date")) %>% 
+dl <- dl %>%
+  dplyr::full_join(df.c40.dl, by = c("hhid", "date")) %>%
   dplyr::full_join(df.c41.dl, by = c("hhid", "date"))
 
+###############################
+###   Combining variables   ###
+###############################
+maxlist <- c("c36_temp", "c36a_temp", "c40_temp", "c36a_hr", "c36_rr", "c36a_rr")
 
-dl$malnutrition <- fun.combine("malnutrition_der")
+minlist <- c("c36_oxym", "c36a_oxym", "c40_oxym")
 
-dl$wheezcrack <- ifelse(dl$c36_wheez == 1 | dl$c36a_wheez == 1 |dl$c36a_wheez_2 == 1, 1, 0)
-dl$wheezcrack <- replace(dl$wheezcrack, is.na(dl$wheezcrack), 0)
+vlist <- c("danger",
+           "malnutrition_der",
+           "indraw",
+           "nodding",
+           "flaring",
+           "grunt",
+           "stridor",
+           "tugging",
+           "retraction",
+           "drink",
+           "vomit",
+           "convulsion",
+           "unconscious",
+           "respdanger",
+           "neodanger",
+           "feed2m",
+           "move2m",
+           "sindraw2m",
+           "grunt2m")
 
-dl$wheez <- ifelse(dl$c36_wheez == 1 | dl$c36a_wheez == 1, 1, 0)
-dl$wheez <- replace(dl$wheez, is.na(dl$wheez), 0)
+varlist <- c("c36_wheez", "c36a_wheez", "c36a_wheez_2",
+             "c36_cough", "c36_dyspnea", "c36a_cough", "c36a_dyspnea",
+             paste0("c36_", vlist), paste0("c36a_", vlist),
+             "lus_dx", "cxr_dx")
 
-dl$fever <- ifelse(dl$c36_temp >= 38 |dl$c36a_temp >= 38 | dl$c40_temp >= 37.5, 1, 0)
-dl$fever <- replace(dl$fever, is.na(dl$fever), 0)
+dll2 <- dl %>% 
+  dplyr::select(hhid, date, all_of(maxlist), all_of(minlist), all_of(varlist), form) %>% 
+  dplyr::left_join(df.nf[,c("hhid", "irc")], by = "hhid") %>% 
+  distinct()
+
+dll <- dl %>% 
+    dplyr::select(hhid, date) %>% 
+    dplyr::distinct() %>% 
+    dplyr::mutate(pre3 = as.Date(date) - 3,
+                  post3 = as.Date(date) + 3) %>% 
+    dplyr::arrange(hhid, date) %>% 
+    group_by(hhid) %>% 
+    dplyr::mutate(n = 1:n()) %>% 
+    dplyr::select(-date) %>% 
+    fuzzy_left_join(dll2, 
+                    by = c(
+                      "hhid" = "hhid",
+                      "pre3" = "date",
+                      "post3" = "date"),
+                    match_fun = list(`==`, `<=`, `>=`)) %>% 
+    distinct(hhid.x, date, form, .keep_all = TRUE) %>% 
+    dplyr::select(-hhid.y) %>% 
+    dplyr::rename(hhid = hhid.x) %>% 
+    dplyr::distinct()
+  
+for(hh in maxlist){
+print(hh)
+dtemp.max <- dll %>% 
+  group_by(hhid, n) %>%
+  slice_max(order_by = !!sym(hh)) %>%
+  dplyr::select(hhid, !!sym(hh), n) 
+
+colnames(dtemp.max) <- c("hhid", paste0(hh, "_high"), "n")
+dll <- left_join(dll, dtemp.max, by = c("hhid", "n"))
+dtemp.max <- NULL
+}
+
+### RR
+dll$rr <- as.numeric(apply(dll[,c("c36_rr_high", "c36a_rr_high")], 1, max, na.rm = TRUE))
+dll$rr <- ifelse(dll$rr %in% c("Inf", "-Inf"), NA, dll$rr)
+
+
+for(ii in minlist){
+  print(ii)
+  dtemp.min <- dll %>% 
+    group_by(hhid, n) %>%
+    slice_min(order_by = !!sym(ii)) %>%
+    dplyr::select(hhid, !!sym(ii), n) 
+  
+  colnames(dtemp.min) <- c("hhid", paste0(ii, "_low"), "n")
+  dll <- left_join(dll, dtemp.min, by = c("hhid", "n"))
+  dtemp.min <- NULL
+}
+
+### Spo2 and Hypoxia
+dll$spo2 <- as.numeric(apply(dll[,c("c36_oxym_low", "c36a_oxym_low", "c40_oxym_low")], 1, min, na.rm = TRUE))
+dll$spo2 <- ifelse(dll$spo2 %in% c("Inf", "-Inf"), NA, dll$spo2)
+dll$spo2 <- ifelse(as.numeric(dll$spo2) < 70, 70, as.numeric(dll$spo2))
+
+dll$hypox <- ifelse(dll$irc == "Peru" & dll$spo2 <= 86, 1,
+                    ifelse(dll$irc %in% c("Guatemala", "India", "Rwanda") &
+                             dll$spo2 <= 92, 1,
+                           ifelse(is.na(dll$spo2), NA, 0)))
+
+for(jj in c(varlist, "hypox")){
+  print(jj)
+  dtemp2.yn <- dll %>% 
+    dplyr::group_by(hhid, n) %>%
+    dplyr::mutate(var = case_when(any(!!sym(jj) == 1) ~ 1L, TRUE ~ NA_integer_)) %>% 
+    #slice_max(order_by = !!sym(hh)) %>%
+    dplyr::select(hhid, var, n) 
+  
+  colnames(dtemp2.yn) <- c("hhid", paste0(jj, "_high"), "n")
+  dll <- left_join(dll, dtemp2.yn, by = c("hhid", "n")) %>% distinct()
+  dtemp2.yn <- NULL
+}
+
+  
+dll <- dll %>%  
+  dplyr::select(-all_of(maxlist), -all_of(minlist), -all_of(varlist), -pre3, -post3, -form) %>% 
+  dplyr::distinct() 
+
+dll$fever <- ifelse(dll$c36_temp_high >= 38 |dll$c36a_temp_high >= 38 | dll$c40_temp_high >= 37.5, 1, 0)
+dll$fever <- replace(dll$fever, is.na(dll$fever), 0)
+
+dll$wheez <- ifelse(dll$c36_wheez_high == 1 | dll$c36a_wheez_high == 1, 1, 0)
+dll$wheez <- replace(dll$wheez, is.na(dll$wheez), 0)
+
+dll$wheezcrack <- ifelse(dll$c36_wheez_high == 1 | dll$c36a_wheez_high == 1 |dll$c36a_wheez_2_high == 1, 1, 0)
+dll$wheezcrack <- replace(dll$wheezcrack, is.na(dll$wheezcrack), 0)
+
+for(vv in vlist){
+  dll[[vv]] <- fun.combine(dll, paste0(vv, "_high"))
+}
+
+
+# a <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
+# a <- a %>% 
+#   dplyr::select(hhid, date, s6_arm)
+#   
+# a$date <- ifelse(a$hhid == 13019 & a$date == "2018-11-13", "2018-11-15", a$date)
+# 
+# 
+# b <- left_join(a, dll, by = c("hhid", "date")) %>% 
+#   dplyr::select(hhid, date, s6_arm, fever, wheez, wheezcrack, all_of(vlist), c36a_hr_high, rr, spo2, hypox) %>% 
+#   distinct()
+# 
+# table(b$fever, b$s6_arm)
+# table(b$wheez, b$s6_arm)
+# table(b$wheezcrack, b$s6_arm)
+# 
+# for(vvv in c(vlist, "hypox")){
+#   print(vvv)
+#   print(table(b[[vvv]], b$s6_arm))
+# }
+# 
+# for(vc in c("c36a_hr_high", "rr", "spo2")){
+#   print(vc)
+#   print(b %>%
+#           group_by(s6_arm) %>%
+#           summarise(mean = mean(!!sym(vc), na.rm = TRUE))
+#         )
+# }
+
+dl <- left_join(dl, dll, by = c("hhid", "date"))
+
+# 33547 nodding: CAP Sanyuyo
+# LUS and CXR high variable
+# renaming the variables names below and creating diagnosis variables
+
 
 ### Hospitalized
 dl$c36_hospitalized <- ifelse(dl$c36_after == 2 &
                                 (dl$c36_cough == 1 | 
-                                 dl$c36_dyspnea == 1 |
-                                 dl$c36_hypox == 1 |
-                                 dl$c36_oxy_supplem == 1 |
-                                 dl$c36_wheez == 1 |
-                                 dl$c36_crackle == 1|
-                                 dl$lus_dx == 1 |
-                                 dl$cxr_dx == 1), 1, 0)
+                                   dl$c36_dyspnea == 1 |
+                                   dl$c36_hypox == 1 |
+                                   dl$c36_oxy_supplem == 1 |
+                                   dl$c36_wheez == 1 |
+                                   dl$c36_crackle == 1|
+                                   dl$lus_dx == 1 |
+                                   dl$cxr_dx == 1), 1, 0)
 
 dl$c36a_hospitalized <- ifelse(dl$c36a_after == 2 &
                                  (dl$c36a_cough == 1 | 
@@ -918,205 +971,47 @@ dl$adv_respcare <- replace(dl$adv_respcare, dl$c41_oxygen_2_positive == 1, 1)
 dl$adv_respcare <- replace(dl$adv_respcare, dl$c41_oxygen_2_mechanical == 1, 1)
 table(dl$adv_respcare)
 
-##########################################
-##########################################
-dl <- left_join(dl, df.nf[,c("hhid", "e2_participant", "e2_type")], by = "hhid")
+# ##########################################
+# ##########################################
+# dl <- left_join(dl, df.nf[,c("hhid", "e2_participant", "e2_type")], by = "hhid")
+# 
+# dl$death <- ifelse((dl$e2_participant == 3 &
+#                       dl$e2_type == 1 &
+#                       (difftime(as.Date(dl$e2_death_date), as.Date(dl$date), units = "days") < 30)) |
+#                      dl$pcvaCoD == "Probable pneumonia", 1, 0)
+# 
+# dl$death <- ifelse(is.na(dl$death), 0, dl$death)
+# 
+# table(dl$death)
 
-dl$death <- ifelse((dl$e2_participant == 3 &
-                     dl$e2_type == 1 &
-                     (difftime(as.Date(dl$e2_death_date), as.Date(dl$date), units = "days") < 30)) |
-                     dl$pcvaCoD == "Probable pneumonia", 1, 0)
-
-dl$death <- ifelse(is.na(dl$death), 0, dl$death)
-
-table(dl$death)
-
-##########################################
-##########################################
-
-for(vv in c("danger",
-            "indraw",
-            "nodding",
-            "flaring",
-            "grunt",
-            "stridor",
-            "tugging",
-            "retraction",
-            "drink",
-            "vomit",
-            "convulsion",
-            "unconscious",
-            "respdanger",
-            "neodanger",
-            "feed2m",
-            "move2m",
-            "sindraw2m",
-            "grunt2m")){
-  dl[[vv]] <- fun.combine(vv)
-}
-
-
-dl$c36_oxym <- as.numeric(dl$c36_oxym)
-dl$c36a_oxym <- as.numeric(dl$c36a_oxym)
-dl$c40_oxym <- as.numeric(dl$c40_oxym)
-
-dl$spo2 <- as.numeric(apply(dl[,c("c36_oxym", "c36a_oxym", "c40_oxym")], 1, min, na.rm = TRUE))
-dl$spo2 <- ifelse(dl$spo2 %in% c("Inf", "-Inf"), NA, dl$spo2)
-dl$spo2 <- ifelse(as.numeric(dl$spo2) < 70, 70, as.numeric(dl$spo2))
-
-dl <- left_join(dl, df.nf[,c("hhid", "irc")], by = "hhid")
-
-dl$hypox <- ifelse(dl$irc == "Peru" & dl$spo2 <= 86, 1,
-                   ifelse(dl$irc %in% c("Guatemala", "India", "Rwanda") &
-                            dl$spo2 <= 92, 1,
-                          ifelse(is.na(dl$spo2), NA, 0)))
-
-#########################################################################################
-#########################################################################################
-#########################################################################################
-#dl <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/dl_temp.csv")
-dl <- dl %>% distinct()
-
-dl$pre3 <- NULL
-dl$post3 <- NULL
-
-dll1 <- dl
-dll2 <- dl
-
-pb <- txtProgressBar(min = 0,      
-                     max = length(unique(dl$hhid)), 
-                     style = 3,    
-                     width = 50,   
-                     char = "=")   
-
-dlx <- NULL
-
-for(ii in 1:length(unique(dl$hhid))){ 
-  
-  # iii =  35032
-  iii = unique(dl$hhid)[ii]
-  
-  dll <- dll1 %>% 
-    #dplyr::filter(pneumonia == 1) %>% 
-    dplyr::select(hhid, date) %>% 
-    dplyr::distinct() %>% 
-    dplyr::mutate(pre3 = as.Date(date) - 3,
-                  post3 = as.Date(date) + 3) %>% 
-    dplyr::arrange(hhid, date) %>% 
-    group_by(hhid) %>% 
-    dplyr::mutate(n = 1:n()) %>% 
-    #ungroup() %>% 
-    dplyr::select(-date) %>% 
-    dplyr::filter(hhid == iii) %>% 
-    fuzzy_left_join(dll2[,c("hhid", "date", "fever", "indraw", "danger", "sindraw2m",
-                            "feed2m", "move2m", "hypox", "c40_hypox", "c36_hypox", "c36a_hypox",
-                            "c36a_hr", "retraction", "nodding",
-                            "c36_rr", "c36a_rr", "c36_oxym", "c36a_oxym", "c40_oxym")], 
-                    by = c(
-                      "hhid" = "hhid",
-                      #"date" = "date",
-                      "pre3" = "date",
-                      "post3" = "date"),
-                    match_fun = list(`==`, `<=`, `>=`)) %>% 
-    distinct(date, .keep_all = TRUE) %>% 
-    dplyr::select(-hhid.y) %>% 
-    dplyr::rename(hhid = hhid.x) 
-  
-  d1 <- dll %>% 
-    dplyr::select(hhid, date, fever, indraw, danger, sindraw2m, feed2m, move2m,
-                  retraction, nodding, hypox, c40_hypox, c36_hypox, c36a_hypox, n) %>% 
-    dplyr::group_by(n) %>% 
-    dplyr::mutate(fever = case_when(any(fever == 1) ~ 1L, TRUE ~ NA_integer_),
-                  indraw = case_when(any(indraw == 1) ~ 1L, TRUE ~ NA_integer_),
-                  hypox = case_when(any(hypox == 1) ~ 1L, TRUE ~ NA_integer_),
-                  c40_hypox = case_when(any(c40_hypox == 1) ~ 1L, TRUE ~ NA_integer_),
-                  c36_hypox = case_when(any(c36_hypox == 1) ~ 1L, TRUE ~ NA_integer_),
-                  c36a_hypox = case_when(any(c36a_hypox == 1) ~ 1L, TRUE ~ NA_integer_),
-                  danger = case_when(any(danger == 1) ~ 1L, TRUE ~ NA_integer_),
-                  sindraw2m = case_when(any(sindraw2m == 1) ~ 1L, TRUE ~ NA_integer_),
-                  feed2m = case_when(any(feed2m == 1) ~ 1L, TRUE ~ NA_integer_),
-                  move2m = case_when(any(move2m == 1) ~ 1L, TRUE ~ NA_integer_),
-                  retraction = case_when(any(retraction == 1) ~ 1L, TRUE ~ NA_integer_),
-                  nodding = case_when(any(nodding == 1) ~ 1L, TRUE ~ NA_integer_)) %>% 
-    ungroup() %>% 
-    dplyr::distinct()
-  
-#print(iii)
-  ### Keeping the worst value withint the +-3 days
-  max.c36_rr <- distinct(dll %>% group_by(n) %>% slice_max(order_by = c36_rr) %>% ungroup() %>% dplyr::select(hhid, c36_rr, n))
-  max.c36a_rr <- distinct(dll %>% group_by(n) %>% slice_max(order_by = c36a_rr) %>% ungroup() %>% dplyr::select(hhid, c36a_rr, n))
-  max.hr <- distinct(dll %>% group_by(n) %>% slice_max(order_by = c36a_hr) %>% ungroup() %>% dplyr::select(hhid, c36a_hr, n))
-  
-#if(dim(max.c36a_rr)[1] > 0){max.c36_rr$c36_rr <- ifelse(max.c36_rr$c36_rr < max.c36a_rr$c36a_rr, max.c36a_rr$c36a_rr, max.c36_rr$c36_rr)}
-
-  min.c36_oxym <- distinct(dll %>% group_by(n) %>% slice_min(order_by = c36_oxym) %>% ungroup() %>% dplyr::select(hhid, c36_oxym, n))
-  min.c36a_oxym <- distinct(dll %>% group_by(n) %>% slice_min(order_by = c36a_oxym) %>% ungroup() %>% dplyr::select(hhid, c36a_oxym, n))
-  min.c40_oxym <- distinct(dll %>% group_by(n) %>% slice_min(order_by = c40_oxym) %>% ungroup() %>% dplyr::select(hhid, c40_oxym, n))
-  
-#if(dim(min.c36a_oxym)[1] > 0){min.c36_oxym$c36_oxym <- ifelse(min.c36_oxym$c36_oxym > min.c36a_oxym$c36a_oxym, min.c36a_oxym$c36a_oxym, min.c36_oxym$c36_oxym)}
-#if(dim(min.c40_oxym)[1] > 0){min.c36_oxym$c36_oxym <- ifelse(min.c36_oxym$c36_oxym > min.c40_oxym$c40_oxym, min.c36a_oxym$c36a_oxym, min.c40_oxym$c40_oxym)}
-  
-  d2 <- dll[,c("hhid", "date", "n")] %>% 
-    left_join(max.c36_rr, by = c("hhid", "n")) %>%  
-    left_join(max.c36a_rr, by = c("hhid", "n")) %>% 
-    left_join(max.hr, by = c("hhid", "n")) %>% 
-    left_join(min.c36_oxym, by = c("hhid", "n")) %>% 
-    left_join(min.c36a_oxym, by = c("hhid", "n")) %>% 
-    left_join(min.c40_oxym, by = c("hhid", "n"))
-
-for(v in c("date", "c36_rr", "c36a_rr", "c36a_rr", "c36_oxym", "c36a_oxym", "c40_oxym")){
-  d2[[v]] <- as.character(d2[[v]])
-}
-
-  d1$date <- as.character(d1$date)
-  
-  ddd <- left_join(d1, d2, by = c("hhid", "date", "n")) %>% 
-    dplyr::group_by(n) %>% 
-    fill(c36_rr, c36a_rr, c36a_rr, c36_oxym, c36a_oxym, c40_oxym, .direction = c("downup")) %>%  # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    ungroup() %>% 
-    dplyr::select(-n) 
-  
-  dlx <- rbind(dlx, ddd)
-  setTxtProgressBar(pb, ii)
-}
-close(pb)
-
-for(var in c("fever", "indraw")){
-  dlx[[var]] <- ifelse(is.na(dlx[[var]]), 0 , dlx[[var]])
-}
-
-for(ll in c("fever", "indraw", "c36a_hr", "retraction", "nodding", "sindraw2m",
-            "danger", "feed2m", "move2m", "c36_rr", "c36a_rr", "hypox", "c40_hypox",
-            "c36_hypox", "c36a_hypox",
-            "c36_oxym", "c36a_oxym", "c40_oxym")){
-  dl[[ll]] <- NULL
-}
-
-
-dl <- left_join(dl, dlx, by = c("hhid", "date"))
-dl <- dl %>% distinct()
-dl$rr <- fun.combine("rr")
-dl$irc <- NULL
 
 
 dl$pneumonia <- 0
 dl$pneumonia <- replace(dl$pneumonia,
-                        (dl$c36_cough == 1 | dl$c36_dyspnea == 1) &
-                          (dl$c36_danger == 1 | dl$c36_malnutrition_der == 1) &
-                          (dl$cxr_dx == 1 | dl$lus_dx == 1), 1)
+                        (dl$c36_cough_high == 1 | dl$c36_dyspnea_high == 1) &
+                          (dl$c36_danger_high == 1 | dl$c36_malnutrition_der_high == 1) &
+                          (dl$cxr_dx_high == 1 | dl$lus_dx_high == 1), 1)
 
 dl$pneumonia <- replace(dl$pneumonia,
-                        (dl$c36a_cough == 1 | dl$c36a_dyspnea == 1) &
-                          (dl$c36a_danger == 1 | dl$c36a_malnutrition_der == 1) &
-                          (dl$cxr_dx == 1 | dl$lus_dx == 1), 1)
+                        (dl$c36a_cough_high == 1 | dl$c36a_dyspnea_high == 1) &
+                          (dl$c36a_danger_high == 1 | dl$c36a_malnutrition_der_high == 1) &
+                          (dl$cxr_dx_high == 1 | dl$lus_dx_high == 1), 1)
+
+# dl$pneumonia <- replace(dl$pneumonia,
+#                         (dl$c36_cough_high == 1 | dl$c36_dyspnea_high == 1) &
+#                           (dl$c36_hypox_high == 1 | dl$c36a_hypox_high == 1 | dl$c40_hypox_high == 1), 1)
 
 dl$pneumonia <- replace(dl$pneumonia,
-                        (dl$c36_cough == 1 | dl$c36_dyspnea == 1) &
-                          (dl$c36_hypox == 1 | dl$c36a_hypox == 1 | dl$c40_hypox == 1), 1)
+                        (dl$c36_cough_high == 1 | dl$c36_dyspnea_high == 1) &
+                          (dl$hypox_high == 1), 1)
+
+# dl$pneumonia <- replace(dl$pneumonia,
+#                         (dl$c36a_cough_high == 1 | dl$c36a_dyspnea_high == 1) &
+#                           (dl$c36_hypox_high == 1 | dl$c36a_hypox_high == 1 | dl$c40_hypox_high == 1), 1)
 
 dl$pneumonia <- replace(dl$pneumonia,
-                        (dl$c36a_cough == 1 | dl$c36a_dyspnea == 1) &
-                          (dl$c36_hypox == 1 | dl$c36a_hypox == 1 | dl$c40_hypox == 1), 1)
+                        (dl$c36a_cough_high == 1 | dl$c36a_dyspnea_high == 1) &
+                          (dl$hypox_high == 1), 1)
 
 dl$pneumonia <- replace(dl$pneumonia,
                         dl$c40_adcare == 1 | dl$c41_adcare == 1, 1)
@@ -1140,15 +1035,15 @@ df.tab <- df.nf %>%
   dplyr::distinct(hhid, .keep_all = TRUE)
 
 df.tab$tenstrata = ifelse(df.tab$s6_site == "", 1,
-                      ifelse(df.tab$s6_site == "Azangaro", 2,
-                             ifelse(df.tab$s6_site == "Chucuito/Juli", 3,
-                                    ifelse(df.tab$s6_site == "El Collao", 4,
-                                           ifelse(df.tab$s6_site == "Huancane", 5,
-                                                  ifelse(df.tab$s6_site == "JALAPA", 6,
-                                                         ifelse(df.tab$s6_site == "Nagapattinam", 7,
-                                                                ifelse(df.tab$s6_site == "Puno", 8,
-                                                                       ifelse(df.tab$s6_site == "San Roman", 9,
-                                                                              ifelse(df.tab$s6_site == "Villupuram", 10, NA))))))))))
+                          ifelse(df.tab$s6_site == "Azangaro", 2,
+                                 ifelse(df.tab$s6_site == "Chucuito/Juli", 3,
+                                        ifelse(df.tab$s6_site == "El Collao", 4,
+                                               ifelse(df.tab$s6_site == "Huancane", 5,
+                                                      ifelse(df.tab$s6_site == "JALAPA", 6,
+                                                             ifelse(df.tab$s6_site == "Nagapattinam", 7,
+                                                                    ifelse(df.tab$s6_site == "Puno", 8,
+                                                                           ifelse(df.tab$s6_site == "San Roman", 9,
+                                                                                  ifelse(df.tab$s6_site == "Villupuram", 10, NA))))))))))
 
 df.nff <- df.nf %>% 
   dplyr::select(hhid, c30_dob) %>% 
@@ -1390,7 +1285,7 @@ df.tab3 <- df.tab3 %>%
   dplyr::mutate(n = 1:n())
 
 xx <- 
-df.tab3 %>% 
+  df.tab3 %>% 
   dplyr::filter(n > 1) %>% 
   dplyr::select(hhid, date, n) 
 
@@ -1452,12 +1347,12 @@ dd <- dl %>%
                 c41_diagnosis, c41_diagnosis_2,
                 c41_diagnosisx, c41_diagnosisx_2) %>%
   dplyr::mutate(hospitalized_with_resp = ifelse((c36_hospitalized == 1 |
-                                             c36a_hospitalized == 1 |
-                                             c41_hospitalized == 1), 1, 0),
+                                                   c36a_hospitalized == 1 |
+                                                   c41_hospitalized == 1), 1, 0),
                 hospitalized_any = ifelse(c36_after == 2 |
                                             c36a_after == 2 |
                                             (difftime(as.Date(c41_discharge_date), 
-                                                     as.Date(c41_date_admit), units = "days") >= 1), 1, 0)) %>%
+                                                      as.Date(c41_date_admit), units = "days") >= 1), 1, 0)) %>%
   distinct(hhid, date, .keep_all = TRUE) 
 
 for(i in colnames(dd)){
@@ -1488,10 +1383,10 @@ write.csv(dl, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_0
 ###   Notes   ###
 #################
 # Why multiple:
-               # Pneumoniai_2883: Two different time on same day
-               # Pneumoniai_1125: 8 different visits
-               # Pneumoniai_1914: Consecutive visits on 2020-01-06 and 2020-01-07
-               # Pneumoniai_2668: Consecutive visits on 2019-10-01 and 2019-10-02
+# Pneumoniai_2883: Two different time on same day
+# Pneumoniai_1125: 8 different visits
+# Pneumoniai_1914: Consecutive visits on 2020-01-06 and 2020-01-07
+# Pneumoniai_2668: Consecutive visits on 2019-10-01 and 2019-10-02
 
 
 # EBF code update
@@ -1501,9 +1396,20 @@ write.csv(dl, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_0
 # Pneumoniai_3152 with two death dates
 
 
-
-
-
+# Pneumoniai_2883: Two different time on same day, incorrect c36a_hr and c36a_oxym input
+# Pneumoniai_1125: 8 different visits
+# Pneumoniai_1914: Consecutive visits on 2020-01-06 and 2020-01-07
+# Pneumoniai_2668: Consecutive visits on 2019-10-01 and 2019-10-02
+###################################################################################################
+# dplyr::filter(!(hhid == 23578 & lus_date == "2020-06-06")) %>% 
+#   dplyr::filter(!(hhid == 33126 & lus_date == "2019-10-01"))
+# 
+# df.c36a <- df.c36a %>% 
+#   distinct() %>%
+#   distinct(hhid, c36a_date, .keep_all = TRUE) %>%
+#   dplyr::filter(!(hhid == 33018 & c36a_date == "2020-01-06")) %>%
+#   dplyr::filter(!(hhid == 33126 & c36a_date == "2019-10-01"))
+# 
 
 
 
