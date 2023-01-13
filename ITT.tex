@@ -34,6 +34,46 @@
 \makeatother
 \usepackage{xcolor}
 \usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{48,48,48}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.81,0.69}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.50,0.62,0.50}{\textbf{#1}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.80,0.80,0.80}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.86,0.64,0.64}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.80,0.80,0.80}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.86,0.64,0.64}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.50,0.62,0.50}{#1}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.50,0.62,0.50}{\textbf{#1}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.86,0.64,0.64}{\textbf{#1}}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.94,0.87,0.69}{#1}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.87,0.87,0.75}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.86,0.86,0.80}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.50,0.62,0.50}{#1}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.76,0.75,0.62}{#1}}
+\newcommand{\ExtensionTok}[1]{\textcolor[rgb]{0.80,0.80,0.80}{#1}}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.75,0.75,0.82}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.94,0.94,0.56}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.80,0.80,0.80}{#1}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.50,0.62,0.50}{\textbf{#1}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.94,0.87,0.69}{#1}}
+\newcommand{\NormalTok}[1]{\textcolor[rgb]{0.80,0.80,0.80}{#1}}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.94,0.94,0.82}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.94,0.94,0.56}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{1.00,0.81,0.69}{\textbf{#1}}}
+\newcommand{\RegionMarkerTok}[1]{\textcolor[rgb]{0.80,0.80,0.80}{#1}}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.86,0.64,0.64}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.80,0.58,0.58}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.80,0.58,0.58}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.80,0.80,0.80}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.80,0.58,0.58}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.50,0.62,0.50}{\textbf{#1}}}
 \usepackage{graphicx}
 \makeatletter
 \def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
@@ -87,7 +127,7 @@ children}}
 \makeatother
 \subtitle{\textbf{Version 1.6}}
 \author{}
-\date{\vspace{-2.5em}2022-10-30}
+\date{\vspace{-2.5em}2023-01-08}
 
 \begin{document}
 \maketitle
@@ -96,271 +136,60 @@ children}}
 \setcounter{tocdepth}{2}
 \tableofcontents
 }
-\begin{table}[H]
-
-\caption{\label{tab:unnamed-chunk-3}Baseline characteristics to be reported of liveborn children}
-\centering
-\begin{tabular}[t]{l|l|l}
-\hline
-  & Control (N = 1525) & Intervention (N = 1536)\\
-\hline
-International Research Center &  & \\
-\hline
-\hspace{1em}Guatemala & 386 (25.3\%) & 384 (25.0\%)\\
-\hline
-\hspace{1em}India & 387 (25.4\%) & 388 (25.3\%)\\
-\hline
-\hspace{1em}Peru & 358 (23.5\%) & 385 (25.1\%)\\
-\hline
-\hspace{1em}Rwanda & 394 (25.8\%) & 379 (24.7\%)\\
-\hline
-Gestational age (weeks) at intervention &  & 18.1 (3.3)\\
-\hline
-Child sex &  & \\
-\hline
-\hspace{1em}Male & 788 (51.7\%) & 800 (52.1\%)\\
-\hline
-\hspace{1em}Female & 737 (48.3\%) & 736 (47.9\%)\\
-\hline
-Number of siblings in the house & 1.7 (1.1) & 1.6 (1.1)\\
-\hline
-Second-hand smoking & 85  (5.6\%) & 76  (4.9\%)\\
-\hline
-Household food insecurity score &  & \\
-\hline
-\hspace{1em}Food secure & 820 (53.8\%) & 904 (58.9\%)\\
-\hline
-\hspace{1em}Mild & 424 (27.8\%) & 403 (26.2\%)\\
-\hline
-\hspace{1em}Moderate/Sereve & 259 (17.0\%) & 208 (13.5\%)\\
-\hline
-Socio-economic Status & -0.064 (1.057) & 0.06 (1.018)\\
-\hline
-\end{tabular}
-\end{table}
-
-\begin{table}[H]
-\centering
-\begin{tabular}{l|r|l}
-\hline
-Variables & Total & Missing\\
-\hline
-Exclusive breastfeeding & 3061 & 645 (21.1\%)\\
-\hline
-Household food insecurity score & 3061 & 43 (1.4\%)\\
-\hline
-Gestational age (weeks) at intervention & 3061 & 1525 (49.8\%)\\
-\hline
-Second-hand smoking & 3061 & 7 (0.2\%)\\
-\hline
-Number of siblings in the house & 3061 & 1023 (33.4\%)\\
-\hline
-Up-to-date vaccination status & 3061 & 2518 (82.3\%)\\
-\hline
-Birth weight-for-age z score & 3061 & 59 (1.9\%)\\
-\hline
-\end{tabular}
-\end{table}
-
-\begin{table}[H]
-
-\caption{\label{tab:unnamed-chunk-5}Other key characteristics of study population of liveborn children}
-\centering
-\begin{tabular}[t]{l|l|l}
-\hline
-  & Control (N = 1525) & Intervention (N = 1536)\\
-\hline
-\textbf{Maternal variables} & \textbf{} & \textbf{}\\
-\hline
-\hspace{1em}Mother’s age (years) & 25.4 (4.5) & 25.3 (4.4)\\
-\hline
-\hspace{1em}Mother’s highest level of education completed &  & \\
-\hline
-\hspace{2em}No formal education or some primary school (1 or 2) & 540 (35.4\%) & 461 (30.0\%)\\
-\hline
-\hspace{2em}Primary school or some secondary school incomplete (3 or 4) & 514 (33.7\%) & 538 (35.0\%)\\
-\hline
-\hspace{2em}Secondary school or vocational or university/college (5 or 6 or 7) & 471 (30.9\%) & 537 (35.0\%)\\
-\hline
-\hspace{1em}Gestational age at baseline (weeks) & 15.3 (3.2) & 15.5 (3.1)\\
-\hline
-\textbf{Child variables} & \textbf{} & \textbf{}\\
-\hline
-\hspace{1em}Birth weight-for-age z score & -0.8 (1.0) & -0.8 (1.0)\\
-\hline
-\hspace{1em}Exclusive breastfeeding & 550 (36.1\%) & 495 (32.2\%)\\
-\hline
-\hspace{1em}Up-to-date vaccination status & 137  (9.0\%) & 127  (8.3\%)\\
-\hline
-\end{tabular}
-\end{table}
-
-\begin{table}[H]
-
-\caption{\label{tab:unnamed-chunk-6}Pneumonia case characteristics to be reported}
-\centering
-\begin{tabular}[t]{l|l|l}
-\hline
-  & Control (N = 87) & Intervention (N = 83)\\
-\hline
-International Research Center &  & \\
-\hline
-\hspace{1em}Guatemala & 31 (35.6\%) & 37 (44.6\%)\\
-\hline
-\hspace{1em}India & 5  (5.7\%) & 4  (4.8\%)\\
-\hline
-\hspace{1em}Peru & 6  (6.9\%) & 7  (8.4\%)\\
-\hline
-\hspace{1em}Rwanda & 45 (51.7\%) & 35 (42.2\%)\\
-\hline
-Child’s age (months) &  & \\
-\hline
-\hspace{1em}<2 months & 35 (40.2\%) & 37 (44.6\%)\\
-\hline
-\hspace{1em}3-5 months & 24 (27.6\%) & 17 (20.5\%)\\
-\hline
-\hspace{1em}6-11 months & 28 (32.2\%) & 29 (34.9\%)\\
-\hline
-Child sex &  & \\
-\hline
-\hspace{1em}Male & 39 (44.8\%) & 45 (54.2\%)\\
-\hline
-\hspace{1em}Female & 48 (55.2\%) & 38 (45.8\%)\\
-\hline
-Weight (kg) & 5.8 (2.4) & 6.0 (2.3)\\
-\hline
-Severe acute malnutrition & 5  (5.7\%) & 3  (3.6\%)\\
-\hline
-Up-to-date vaccination status & 7  (8.0\%) & 1  (1.2\%)\\
-\hline
-Temperature >38 C & 32 (36.8\%) & 18 (21.7\%)\\
-\hline
-Average Heart rate & 156.6 (18.9) & 152.0 (21.0)\\
-\hline
-Average Respiratory rate & 59.5 (15.7) & 57.4 (12.5)\\
-\hline
-Average SpO2 & 88.6 (7.7) & 89.5 (6.0)\\
-\hline
-Hypoxemia & 57 (65.5\%) & 53 (63.9\%)\\
-\hline
-Wheeze +/- crackles & 16 (18.4\%) & 16 (19.3\%)\\
-\hline
-At least one respiratory danger sign & 59 (67.8\%) & 53 (63.9\%)\\
-\hline
-Chest indrawing & 38 (43.7\%) & 34 (41.0\%)\\
-\hline
-Head nodding & 25 (28.7\%) & 18 (21.7\%)\\
-\hline
-Persistent nasal flaring & 19 (21.8\%) & 12 (14.5\%)\\
-\hline
-Grunting & 5  (5.7\%) & 12 (14.5\%)\\
-\hline
-Stridor when calm & 7  (8.0\%) & 11 (13.3\%)\\
-\hline
-Audible wheeze, n (\%) & 12 (13.8\%) & 12 (14.5\%)\\
-\hline
-Tracheal tugging & 39 (44.8\%) & 19 (22.9\%)\\
-\hline
-Intercostal retractions & 19 (21.8\%) & 18 (21.7\%)\\
-\hline
-At least one general danger sign, n (\%) & 36 (41.4\%) & 42 (50.6\%)\\
-\hline
-Unable to drink or breastfeed, n (\%) & 11 (12.6\%) & 10 (12.0\%)\\
-\hline
-Vomiting everything, n (\%) & 7  (8.0\%) & 7  (8.4\%)\\
-\hline
-Convulsions, n (\%) & 2  (2.3\%) & 5  (6.0\%)\\
-\hline
-Lethargy or unconscious, n (\%) & 10 (11.5\%) & 12 (14.5\%)\\
-\hline
-At least one neonatal danger sign, n (\%) & 15 (17.2\%) & 20 (24.1\%)\\
-\hline
-Unable to feed well, n (\%) & 6  (6.9\%) & 12 (14.5\%)\\
-\hline
-Not moving at all or moves only, n (\%) & 3  (3.4\%) & 3  (3.6\%)\\
-\hline
-Grunting, n (\%) & 9 (10.3\%) & 5  (6.0\%)\\
-\hline
-Severe chest indrawing, n (\%) & 3  (3.4\%) & 6  (7.2\%)\\
-\hline
-Lung Imaging &  & \\
-\hline
-\hspace{1em}Pneumonia by Lung Ultrasound , n(\%) & 43 (49.4\%) & 42 (50.6\%)\\
-\hline
-\hspace{1em}Pneumonia by Chest Xray , n(\%) & 3  (3.4\%) & 0   (0.0\%)\\
-\hline
-Clinical care &  & \\
-\hline
-\hspace{1em}Hospitalized, n (\%) & 68 (78.2\%) & 61 (73.5\%)\\
-\hline
-\hspace{1em}Oxygen treatment, n (\%) & 14 (16.1\%) & 12 (14.5\%)\\
-\hline
-\hspace{1em}Advanced respiratory supportive care, n (\%) &  & \\
-\hline
-Outcome & 12 (13.8\%) & 8  (9.6\%)\\
-\hline
-\hspace{1em}Mortality, n (\%) & 6  (6.9\%) & 4  (4.8\%)\\
-\hline
-\end{tabular}
-\end{table}
-\newpage
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{table1x}\NormalTok{(df.tab, }\FunctionTok{c}\NormalTok{(}\StringTok{"co"}\NormalTok{, }\StringTok{"bc"}\NormalTok{),}
+                \StringTok{"factor(s6\_arm)"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
 
 \begin{verbatim}
-## 
-## Call:
-## geeglm(formula = pneumonia ~ s6_arm + factor(tenstrata), family = "poisson", 
-##     data = df.base, offset = (log(fu_day)), id = hhid, corstr = "independence")
-## 
-##  Coefficients:
-##                     Estimate   Std.err    Wald Pr(>|W|)    
-## (Intercept)        -10.02801   0.40980 598.815  < 2e-16 ***
-## s6_arm              -0.03894   0.16033   0.059    0.808    
-## factor(tenstrata)9   0.04545   0.81876   0.003    0.956    
-## factor(tenstrata)8   0.20522   0.57454   0.128    0.721    
-## factor(tenstrata)7  -0.19517   0.60288   0.105    0.746    
-## factor(tenstrata)6   1.77361   0.42602  17.332 3.14e-05 ***
-## factor(tenstrata)5  -0.22074   1.08133   0.042    0.838    
-## factor(tenstrata)3   1.04434   0.70315   2.206    0.137    
-## factor(tenstrata)2  -0.27897   1.08482   0.066    0.797    
-## factor(tenstrata)1   1.92066   0.42461  20.461 6.09e-06 ***
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Correlation structure = independence 
-## Estimated Scale Parameters:
-## 
-##             Estimate Std.err
-## (Intercept)    7.627   89.59
-## Number of clusters:   3000  Maximum cluster size: 4
+##                                         1            0      Overall
+## factor(irc) (Guatemala)        38 (44.7%)   32 (35.6%)   70 (40.0%)
+## factor(irc) (India)             5  (5.9%)    6  (6.7%)   11  (6.3%)
+## factor(irc) (Peru)              7  (8.2%)    6  (6.7%)   13  (7.4%)
+## factor(irc) (Rwanda)           35 (41.2%)   46 (51.1%)   81 (46.3%)
+## factor(agecat) (<2m)           39 (45.9%)   37 (41.1%)   76 (43.4%)
+## factor(agecat) (2-6m)          17 (20.0%)   25 (27.8%)   42 (24.0%)
+## factor(agecat) (6-12)          29 (34.1%)   28 (31.1%)   57 (32.6%)
+## factor(c30_sex) (1)            46 (54.1%)   40 (44.4%)   86 (49.1%)
+## factor(c30_sex) (2)            39 (45.9%)   50 (55.6%)   89 (50.9%)
+## wt mean(SD)                     6.0 (2.3)    5.7 (2.4)    5.8 (2.3)
+## factor(malnutrition_der) (1)    9 (10.6%)    7  (7.8%)   16  (9.1%)
+## factor(vax_u2d) (1)             1  (1.2%)    7  (7.8%)    8  (4.6%)
+## factor(fever) (1)              30 (35.3%)   45 (50.0%)   75 (42.9%)
+## c36a_hr_high mean(SD)        153.7 (21.5) 156.6 (18.9) 155.2 (20.2)
+## rr mean(SD)                   58.0 (12.4)  59.4 (15.5)  58.7 (14.0)
+## spo2 mean(SD)                  87.9 (6.1)   87.8 (6.8)   87.8 (6.4)
+## factor(hypox) (1)              60 (70.6%)   60 (66.7%)  120 (68.6%)
+## factor(wheezcrack) (1)         17 (20.0%)   17 (18.9%)   34 (19.4%)
+## factor(respdanger) (1)         58 (68.2%)   64 (71.1%)  122 (69.7%)
+## factor(indraw) (1)             39 (45.9%)   42 (46.7%)   81 (46.3%)
+## factor(nodding) (1)            19 (22.4%)   25 (27.8%)   44 (25.1%)
+## factor(flaring) (1)            12 (14.1%)   21 (23.3%)   33 (18.9%)
+## factor(grunt) (1)              12 (14.1%)    5  (5.6%)   17  (9.7%)
+## factor(stridor) (1)            12 (14.1%)    7  (7.8%)   19 (10.9%)
+## factor(wheez) (1)              13 (15.3%)   13 (14.4%)   26 (14.9%)
+## factor(tugging) (1)            22 (25.9%)   39 (43.3%)   61 (34.9%)
+## factor(retraction) (1)         20 (23.5%)   22 (24.4%)   42 (24.0%)
+## factor(danger) (1)             44 (51.8%)   44 (48.9%)   88 (50.3%)
+## factor(drink) (1)              10 (11.8%)   14 (15.6%)   24 (13.7%)
+## factor(vomit) (1)               7  (8.2%)    8  (8.9%)   15  (8.6%)
+## factor(convulsion) (1)          5  (5.9%)    3  (3.3%)    8  (4.6%)
+## factor(unconscious) (1)        13 (15.3%)   12 (13.3%)   25 (14.3%)
+## factor(neodanger) (1)          21 (24.7%)   20 (22.2%)   41 (23.4%)
+## factor(feed2m) (1)             12 (14.1%)    8  (8.9%)   20 (11.4%)
+## factor(move2m) (1)              4  (4.7%)    4  (4.4%)    8  (4.6%)
+## factor(sindraw2m) (1)           5  (5.9%)   11 (12.2%)   16  (9.1%)
+## factor(grunt2m) (1)             6  (7.1%)    4  (4.4%)   10  (5.7%)
+## factor(lus_dx) (1)             42 (49.4%)   44 (48.9%)   86 (49.1%)
+## factor(cxr_dx) (1)              1  (1.2%)    3  (3.3%)    4  (2.3%)
+## factor(hospitalized) (1)       69 (81.2%)   75 (83.3%)  144 (82.3%)
+## factor(oxy_treat) (1)          28 (32.9%)   31 (34.4%)   59 (33.7%)
+## factor(adv_respcare) (1)        8  (9.4%)   15 (16.7%)   23 (13.1%)
+## factor(death) (1)               8  (9.4%)   11 (12.2%)   19 (10.9%)
 \end{verbatim}
 
-\begin{table}[H]
-\centering
-\begin{tabular}{l|r|r|r|r|r|r}
-\hline
-term & estimate & std.error & statistic & p.value & conf.low & conf.high\\
-\hline
-(Intercept) & 0.0000 & 0.4098 & 598.8147 & 0.0000 & 0.0000 & 0.0001\\
-\hline
-s6\_arm & 0.9618 & 0.1603 & 0.0590 & 0.8081 & 0.7025 & 1.3169\\
-\hline
-factor(tenstrata)9 & 1.0465 & 0.8188 & 0.0031 & 0.9557 & 0.2103 & 5.2079\\
-\hline
-factor(tenstrata)8 & 1.2278 & 0.5745 & 0.1276 & 0.7209 & 0.3982 & 3.7860\\
-\hline
-factor(tenstrata)7 & 0.8227 & 0.6029 & 0.1048 & 0.7461 & 0.2524 & 2.6817\\
-\hline
-factor(tenstrata)6 & 5.8921 & 0.4260 & 17.3323 & 0.0000 & 2.5565 & 13.5800\\
-\hline
-factor(tenstrata)5 & 0.8019 & 1.0813 & 0.0417 & 0.8382 & 0.0963 & 6.6767\\
-\hline
-factor(tenstrata)3 & 2.8415 & 0.7031 & 2.2059 & 0.1375 & 0.7162 & 11.2739\\
-\hline
-factor(tenstrata)2 & 0.7566 & 1.0848 & 0.0661 & 0.7971 & 0.0902 & 6.3423\\
-\hline
-factor(tenstrata)1 & 6.8255 & 0.4246 & 20.4607 & 0.0000 & 2.9696 & 15.6878\\
-\hline
-\end{tabular}
-\end{table}
+\newpage
 
 \end{document}

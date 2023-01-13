@@ -33,6 +33,7 @@ library(lubridate)
 library(readxl)
 library(gee)
 library(geepack)
+library(data.table)
 
 df.tab <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab.csv")
 df.tab3 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
@@ -46,6 +47,255 @@ df.tab <- df.tab %>%
 ```{r, include=FALSE}
 df.base <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_baseline_09-20-2022.csv")
 df.nf <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_ITTtrt_20220909_unfmt.csv")
+
+df.he1 <- fread("/Users/shakir777/Dropbox/HAPIN/Fetal growth/datain/HAPIN_HE1_ITT_full_20220720_fmt.csv")
+df.he1 <- df.he1 %>% 
+  dplyr::rename(hhid = HHID,
+                co_BL = CO_avg_ppm_M_BL,
+                co_P1 = CO_avg_ppm_M_P1,
+                co_P2 = CO_avg_ppm_M_P2,
+                bc_BL = ECM_bc_conc_M_BL,
+                bc_P1 = ECM_bc_conc_M_P1,
+                bc_P2 = ECM_bc_conc_M_P2,
+                pm_BL = ECM_grav_neph_conc_M_BL,
+                pm_P1 = ECM_grav_neph_conc_M_P1,
+                pm_P2 = ECM_grav_neph_conc_M_P2,
+                hapdate_BL = ecm_date_start_m_BL,
+                hapdate_P1 = ecm_date_start_m_P1,
+                hapdate_P2 = ecm_date_start_m_P2) %>% 
+  dplyr::select(hhid, co_BL, co_P1, co_P2,
+                bc_BL, bc_P1, bc_P2,
+                pm_BL, pm_P1, pm_P2,
+                hapdate_BL, hapdate_P1, hapdate_P2) 
+
+df.he1 <- data.frame(df.he1)
+
+### Baseline IQR Table-1
+fun.iqr <- function(pmvar, bcvar, covar, data){
+  df.he1$pmvar <- df.he1[[pmvar]]
+  df.he1$bcvar <- df.he1[[bcvar]]
+  df.he1$covar <- df.he1[[covar]]
+  
+  df.he1 %>% 
+    dplyr::select(hhid, covar, bcvar, pmvar) %>% 
+    dplyr::right_join(data[,c("hhid", "s6_arm")]) %>% 
+    #dplyr::group_by(s6_arm) %>% 
+    dplyr::summarise(pm_med = round(median(pmvar, na.rm = TRUE), 1),
+                     pm_q1 = round(quantile(pmvar, c(0.25), na.rm = TRUE), 1),
+                     pm_q3 = round(quantile(pmvar, c(0.75), na.rm = TRUE), 1),
+                     pm_lab = paste0(pm_med, " (", pm_q1, "-", pm_q3, ")"),
+                     bc_med = round(median(bcvar, na.rm = TRUE), 1),
+                     bc_q1 = round(quantile(bcvar, c(0.25), na.rm = TRUE), 1),
+                     bc_q3 = round(quantile(bcvar, c(0.75), na.rm = TRUE), 1),
+                     bc_lab = paste0(bc_med, " (", bc_q1, "-", bc_q3, ")"),
+                     co_med = round(median(covar, na.rm = TRUE), 1),
+                     co_q1 = round(quantile(covar, c(0.25), na.rm = TRUE), 1),
+                     co_q3 = round(quantile(covar, c(0.75), na.rm = TRUE), 1),
+                     co_lab = paste0(co_med, " (", co_q1, "-", co_q3, ")"),) %>%
+    dplyr::select(pm_lab, bc_lab, co_lab) %>% 
+    t() -> tab
+  
+  tab <- data.frame(tab)
+  #tab <- tab[,c(2,1)]
+  
+  print(tab)
+}
+
+########################################################
+########################################################
+
+fun.iqr(pmvar = "pm_BL",
+        bcvar = "bc_BL",
+        covar = "co_BL",
+        data = df.tab)
+
+fun.iqr(pmvar = "pm_BL",
+        bcvar = "bc_BL",
+        covar = "co_BL",
+        data = df.tab3)
+
+df.he1$co <- apply(df.he1[,c("co_P1", "co_P2")], 1, mean, na.rm = TRUE)
+df.he1$bc <- apply(df.he1[,c("bc_P1", "bc_P2")], 1, mean, na.rm = TRUE)
+df.he1$pm <- apply(df.he1[,c("pm_P1", "pm_P2")], 1, mean, na.rm = TRUE)
+
+fun.iqr(pmvar = "pm",
+        bcvar = "bc",
+        covar = "co",
+        data = df.tab)
+
+fun.iqr(pmvar = "pm",
+        bcvar = "bc",
+        covar = "co",
+        data = df.tab3)
+
+##################################################
+##################################################
+
+### Baseline missing Table-1
+df.he1.miss <-
+df.he1 %>% 
+  dplyr::right_join(df.tab[,c("hhid", "s6_arm")]) %>% 
+  dplyr::group_by(s6_arm) %>% 
+  summarise(pm_BL_missing = sum(is.na(pm_BL)),
+            bc_BL_missing = sum(is.na(bc_BL)),
+            co_BL_missing = sum(is.na(co_BL)),
+            pm_P1_missing = sum(is.na(pm_P1)),
+            bc_P1_missing = sum(is.na(bc_P1)),
+            co_P1_missing = sum(is.na(co_P1)),
+            pm_P2_missing = sum(is.na(pm_P2)),
+            bc_P2_missing = sum(is.na(bc_P2)),
+            co_P2_missing = sum(is.na(co_P2))) %>% t()
+
+df.he1.miss <- data.frame(df.he1.miss)
+
+df.he1.miss.tab <- 
+df.he1.miss %>% 
+  dplyr::rename(Control = X1, Intervention = X2) %>% 
+  dplyr::relocate(Control, .after = Intervention) %>% 
+  dplyr::filter(rownames(df.he1.miss) != "s6_arm") %>% 
+  dplyr::mutate(Intervention = paste0(Intervention , " (", round((Intervention/sum(Intervention, na.rm = T))*100, 1), "%)"),
+                Control = paste0(Control , " (", round((Control/sum(Control, na.rm = T))*100, 1), "%)"))
+  
+
+# ### Baseline IQR Table-3
+# df.he1 %>% 
+#   dplyr::select(hhid, co_BL, bc_BL, pm_BL) %>% 
+#   dplyr::right_join(df.tab3[,c("hhid", "s6_arm")]) %>% 
+#   dplyr::group_by(s6_arm) %>% 
+#   dplyr::summarise(pm_med = round(median(pm_BL, na.rm = TRUE), 1),
+#                    pm_iqr = round(IQR(pm_BL, na.rm = TRUE), 1),
+#                    pm_lab = paste0(pm_med, " (", pm_iqr, ")"),
+#                    bc_med = round(median(bc_BL, na.rm = TRUE), 1),
+#                    bc_iqr = round(IQR(bc_BL, na.rm = TRUE), 1),
+#                    bc_lab = paste0(bc_med, " (", bc_iqr, ")"),
+#                    co_med = round(median(co_BL, na.rm = TRUE), 1),
+#                    co_iqr = round(IQR(co_BL, na.rm = TRUE), 1),
+#                    co_lab = paste0(co_med, " (", co_iqr, ")")) %>%
+#   dplyr::select(s6_arm, pm_lab, bc_lab, co_lab) %>% 
+#   t()
+# 
+# ### Baseline overall Table-3
+# df.he1 %>% 
+#   dplyr::select(hhid, co_BL, bc_BL, pm_BL) %>% 
+#   dplyr::right_join(df.tab3[,c("hhid", "s6_arm")]) %>% 
+#   dplyr::summarise(pm_med = round(median(pm_BL, na.rm = TRUE), 1),
+#                    pm_iqr = round(IQR(pm_BL, na.rm = TRUE), 1),
+#                    pm_lab = paste0(pm_med, " (", pm_iqr, ")"),
+#                    bc_med = round(median(bc_BL, na.rm = TRUE), 1),
+#                    bc_iqr = round(IQR(bc_BL, na.rm = TRUE), 1),
+#                    bc_lab = paste0(bc_med, " (", bc_iqr, ")"),
+#                    co_med = round(median(co_BL, na.rm = TRUE), 1),
+#                    co_iqr = round(IQR(co_BL, na.rm = TRUE), 1),
+#                    co_lab = paste0(co_med, " (", co_iqr, ")")) %>%
+#   dplyr::select(pm_lab, bc_lab, co_lab) %>% 
+#   t()
+
+
+
+### Baseline missing Table-3
+df.he1 %>% 
+  dplyr::select(hhid, co_BL, bc_BL, pm_BL) %>% 
+  dplyr::right_join(df.tab[,c("hhid", "s6_arm")]) %>% 
+  dplyr::group_by(s6_arm) %>% 
+  summarise(pm_BL_missing = sum(is.na(pm_BL)),
+            bc_BL_missing = sum(is.na(bc_BL)),
+            co_BL_missing = sum(is.na(co_BL))) %>% t()
+
+# ### 
+# df.he1 %>% 
+#   dplyr::select(hhid, co, bc, pm) %>% 
+#   dplyr::right_join(df.tab[,c("hhid", "s6_arm")]) %>% 
+#   dplyr::group_by(s6_arm) %>% 
+#   dplyr::summarise(pm_med = round(median(pm, na.rm = TRUE), 1),
+#                    pm_iqr = round(IQR(pm, na.rm = TRUE), 1),
+#                    pm_lab = paste0(pm_med, " (", pm_iqr, ")"),
+#                    bc_med = round(median(bc, na.rm = TRUE), 1),
+#                    bc_iqr = round(IQR(bc, na.rm = TRUE), 1),
+#                    bc_lab = paste0(bc_med, " (", bc_iqr, ")"),
+#                    co_med = round(median(co, na.rm = TRUE), 1),
+#                    co_iqr = round(IQR(co, na.rm = TRUE), 1),
+#                    co_lab = paste0(co_med, " (", co_iqr, ")")) %>%
+#   dplyr::select(s6_arm, pm_lab, bc_lab, co_lab) %>% 
+#   t()
+# 
+# df.he1 %>% 
+#   dplyr::select(hhid, co, bc, pm) %>% 
+#   dplyr::right_join(df.tab3[,c("hhid", "s6_arm")]) %>% 
+#   dplyr::group_by(s6_arm) %>% 
+#   dplyr::summarise(pm_med = round(median(pm, na.rm = TRUE), 1),
+#                    pm_iqr = round(IQR(pm, na.rm = TRUE), 1),
+#                    pm_lab = paste0(pm_med, " (", pm_iqr, ")"),
+#                    bc_med = round(median(bc, na.rm = TRUE), 1),
+#                    bc_iqr = round(IQR(bc, na.rm = TRUE), 1),
+#                    bc_lab = paste0(bc_med, " (", bc_iqr, ")"),
+#                    co_med = round(median(co, na.rm = TRUE), 1),
+#                    co_iqr = round(IQR(co, na.rm = TRUE), 1),
+#                    co_lab = paste0(co_med, " (", co_iqr, ")")) %>%
+#   dplyr::select(s6_arm, pm_lab, bc_lab, co_lab) %>% 
+#   t()
+# 
+# 
+# df.he1 %>% 
+#   dplyr::select(hhid, co, bc, pm) %>% 
+#   dplyr::summarise(pm_med = round(median(pm, na.rm = TRUE), 1),
+#                    pm_iqr = round(IQR(pm, na.rm = TRUE), 1),
+#                    pm_lab = paste0(pm_med, " (", pm_iqr, ")"),
+#                    bc_med = round(median(bc, na.rm = TRUE), 1),
+#                    bc_iqr = round(IQR(bc, na.rm = TRUE), 1),
+#                    bc_lab = paste0(bc_med, " (", bc_iqr, ")"),
+#                    co_med = round(median(co, na.rm = TRUE), 1),
+#                    co_iqr = round(IQR(co, na.rm = TRUE), 1),
+#                    co_lab = paste0(co_med, " (", co_iqr, ")")) %>%
+#   dplyr::select(pm_lab, bc_lab, co_lab) %>% 
+#   t()
+
+# df.he1_co <- df.he1 %>% 
+#   dplyr::select(hhid, contains("co_")) %>% 
+#   pivot_longer(
+#     cols = starts_with("co_"),
+#     names_to = "visit",
+#     names_prefix = "co_",
+#     values_to = "co",
+#     values_drop_na = TRUE) 
+# 
+# df.he1_bc <- df.he1 %>% 
+#   dplyr::select(hhid, contains("bc_")) %>% 
+#   pivot_longer(
+#     cols = starts_with("bc_"),
+#     names_to = "visit",
+#     names_prefix = "bc_",
+#     values_to = "bc",
+#     values_drop_na = TRUE) 
+# 
+# df.he1_pm <- df.he1 %>% 
+#   dplyr::select(hhid, contains("pm_")) %>% 
+#   pivot_longer(
+#     cols = starts_with("pm_"),
+#     names_to = "visit",
+#     names_prefix = "pm_",
+#     values_to = "pm",
+#     values_drop_na = TRUE) 
+# 
+# df.he1_hapdate <- df.he1 %>% 
+#   dplyr::select(hhid, contains("hapdate_")) %>% 
+#   pivot_longer(
+#     cols = starts_with("hapdate_"),
+#     names_to = "visit",
+#     names_prefix = "hapdate_",
+#     values_to = "hapdate",
+#     values_drop_na = TRUE) %>% 
+#   dplyr::mutate(hapdate = as.Date(hapdate, format = "%d%B%Y")) 
+# 
+# df.he1x <- full_join(df.he1_co, df.he1_bc, by = c("hhid", "visit")) %>% 
+#   full_join(df.he1_pm, by = c("hhid", "visit")) %>% 
+#   full_join(df.he1_hapdate, by = c("hhid", "visit")) %>% 
+#   dplyr::select(hhid, pm, bc, co) %>% 
+#   dplyr::group_by(hhid) %>% 
+#   dplyr::mutate(pm = mean(pm, na.rm = TRUE),
+#                 bc = mean(bc, na.rm = TRUE),
+#                 co = mean(co, na.rm = TRUE)) %>% 
+#   dplyr::distinct()
+
 
 df.tomerge <- df.nf %>% 
   dplyr::filter(timepoint == "BL") %>% 
@@ -148,11 +398,12 @@ df.tab3 <- left_join(df.tab3, df.vax3[,c("hhid", "vax_u2d")], by = "hhid")
 ```
 
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, eval = F}
 df.tab$fies_cat <- ifelse(df.tab$fies_cat == 0, "Food secure",
                           ifelse(df.tab$fies_cat == 1, "Mild",
                                  ifelse(df.tab$fies_cat == 2, "Moderate/Sereve", NA)))
 
+#df.tab <- left_join(df.tab, df.he1x, by = "hhid")
 
 tab1 <- table1x(df.tab, c("factor(irc)",
                           "GAweeks_AT_INTERVENTION",
@@ -162,56 +413,62 @@ tab1 <- table1x(df.tab, c("factor(irc)",
                           "factor(fies_cat)"),
                 "factor(s6_arm)")
 
-tab1 <- tab1[,c(1,2)]
+tab1 <- tab1[,c(2,1)]
 tab1$order <- c(1:nrow(tab1))
 
-tab1 <- rowinsert(locations = which(rownames(tab1) %in%
-                                      c("factor(irc) (Guatemala)",
-                                        "factor(c30_sex) (1)",
-                                        "factor(fies_cat) (Food secure)")),
-                  rownm = c("International Research Center",
-                            "Child sex",
-                            "Household food insecurity score"),
-                  tab = tab1)
-
-tab1 <- tab1[str_detect(rownames(tab1), "\\b(0)\\b") == "FALSE" &
-               str_detect(rownames(tab1), "\\b(NA)\\b") == "FALSE",]
-
-tab1$order <- NULL
-
-tab1 <- rbind(tab1,
-              c(
-                paste0(
-                round(mean(df.tab$pca[df.tab$s6_arm == 0]), 3), " (",
-                round(sd(df.tab$pca[df.tab$s6_arm == 0]), 3), ")"
-                ),
-                paste0(
-                round(mean(df.tab$pca[df.tab$s6_arm == 1]), 3), " (",
-                round(sd(df.tab$pca[df.tab$s6_arm == 1]), 3), ")"
-                )
-                )
-              )
-tab1$`0` <- ifelse(tab1$`0` == "NaN ( NA)", "", tab1$`0`)
-
-rownames(tab1) <- c("International Research Center",
-                    "Guatemala", "India", "Peru", "Rwanda",
-                    "Gestational age (weeks) at intervention",
-                    "Child sex", "Male", "Female", "Number of siblings in the house", 
-                    "Second-hand smoking", "Household food insecurity score",
-                    "Food secure", "Mild", "Moderate/Sereve", "Socio-economic Status")
-
-tab1 <- tab1 %>% 
-  kable(caption = "Baseline characteristics to be reported of liveborn children",
-        col.names = c(paste0("Control (N = ", table(df.tab$s6_arm)[1], ")"),
-                      paste0("Intervention (N = ", table(df.tab$s6_arm)[2], ")"))) %>% 
-    kableExtra::kable_classic_2(latex_options = "HOLD_position") %>%
-  add_indent(c(2:5,8,9,13:15), level_of_indent = 1)
+# tab1 <- rowinsert(locations = which(rownames(tab1) %in%
+#                                       c("factor(irc) (Guatemala)",
+#                                         "factor(c30_sex) (1)",
+#                                         "factor(fies_cat) (Food secure)")),
+#                   rownm = c("International Research Center",
+#                             "Child sex",
+#                             "Household food insecurity score"),
+#                   tab = tab1)
+# 
+# tab1 <- tab1[str_detect(rownames(tab1), "\\b(0)\\b") == "FALSE" &
+#                str_detect(rownames(tab1), "\\b(NA)\\b") == "FALSE",]
+# 
+# tab1$order <- NULL
+# 
+# tab1 <- rbind(tab1,
+#               c(
+#                 paste0(
+#                 round(mean(df.tab$pca[df.tab$s6_arm == 0]), 3), " (",
+#                 round(sd(df.tab$pca[df.tab$s6_arm == 0]), 3), ")"
+#                 ),
+#                 paste0(
+#                 round(mean(df.tab$pca[df.tab$s6_arm == 1]), 3), " (",
+#                 round(sd(df.tab$pca[df.tab$s6_arm == 1]), 3), ")"
+#                 )
+#                 )
+#               )
+# tab1$`0` <- ifelse(tab1$`0` == "NaN ( NA)", "", tab1$`0`)
+# 
+# rownames(tab1) <- c("International Research Center",
+#                     "Guatemala", "India", "Peru", "Rwanda",
+#                     "Gestational age (weeks) at intervention",
+#                     "Child sex", "Male", "Female", "Number of siblings in the house",
+#                     "Second-hand smoking", "Household food insecurity score",
+#                     "Food secure", "Mild", "Moderate/Sereve", "Socio-economic Status")
+# 
+# tab1 <- tab1 %>%
+#   kable(caption = "Baseline characteristics to be reported of liveborn children",
+#         col.names = c(paste0("Intervention (N = ", table(df.tab$s6_arm)[2], ")"),
+#                       paste0("Control (N = ", table(df.tab$s6_arm)[1], ")"))) %>%
+#     kableExtra::kable_classic_2(latex_options = "HOLD_position") %>%
+#   add_indent(c(2:5,8,9,13:15), level_of_indent = 1)
 
 tab1
+```
+
+```{r, eval = F}
+# table1x(df.tab, c("pm", "bc"),
+#                 "factor(s6_arm)")
+# 
 
 ```
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, eval=FALSE}
 
 misstab <- function(data, varlist, rownm = NULL){
   
@@ -265,7 +522,7 @@ rownm = c("Exclusive breastfeeding",
 
 ```
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, eval = F}
 tab2 <- table1x(df.tab, c("MAyears_at_baseline",
                           "factor(m10_educ_R)",
                           "GAweeks_AT_baseline",
@@ -274,59 +531,61 @@ tab2 <- table1x(df.tab, c("MAyears_at_baseline",
                           "factor(vax_u2d)"),
                 "factor(s6_arm)")
 
-tab2 <- tab2[,c(1,2)]
-tab2$order <- c(1:nrow(tab2))
-
-tab2 <- rowinsert(locations = which(rownames(tab2) %in%
-                                      c("MAyears_at_baseline mean(SD)",
-                                        "factor(m10_educ_R) (1)",
-                                        "WeightZScore mean(SD)")),
-                  rownm = c("Maternal variables",
-                            "Mother’s highest level of education completed",
-                            "Child variables"),
-                  tab = tab2)
-
-tab2 <- tab2[str_detect(rownames(tab2), "\\b(0)\\b") == "FALSE" &
-               str_detect(rownames(tab2), "\\b(NA)\\b") == "FALSE",]
-
-rownames(tab2) <- c("Maternal variables",
-                    "Mother’s age (years)",
-                    "Mother’s highest level of education completed",
-                    "No formal education or some primary school (1 or 2)",
-                    "Primary school or some secondary school incomplete (3 or 4)",
-                    "Secondary school or vocational or university/college (5 or 6 or 7)",
-                    "Gestational age at baseline (weeks)",
-                    "Child variables",
-                    "Birth weight-for-age z score",
-                    "Exclusive breastfeeding",
-                    "Up-to-date vaccination status")
-
-tab2$order <- NULL
-tab2 <- tab2 %>%
-  kable(caption = "Other key characteristics of study population of liveborn children",
-        col.names = c(paste0("Control (N = ", table(df.tab$s6_arm)[1], ")"),
-                      paste0("Intervention (N = ", table(df.tab$s6_arm)[2], ")"))) %>%
-  kableExtra::kable_classic_2(latex_options = "HOLD_position") %>%
-  add_indent(c(2,3,7,9:11), level_of_indent = 1) %>%
-  add_indent(c(4:6), level_of_indent = 2) %>% 
-  row_spec(c(1,8), bold = TRUE) 
+tab2 <- tab2[,c(2,1)]
+# tab2$order <- c(1:nrow(tab2))
+# 
+# tab2 <- rowinsert(locations = which(rownames(tab2) %in%
+#                                       c("MAyears_at_baseline mean(SD)",
+#                                         "factor(m10_educ_R) (1)",
+#                                         "WeightZScore mean(SD)")),
+#                   rownm = c("Maternal variables",
+#                             "Mother’s highest level of education completed",
+#                             "Child variables"),
+#                   tab = tab2)
+# 
+# tab2 <- tab2[str_detect(rownames(tab2), "\\b(0)\\b") == "FALSE" &
+#                str_detect(rownames(tab2), "\\b(NA)\\b") == "FALSE",]
+# 
+# rownames(tab2) <- c("Maternal variables",
+#                     "Mother’s age (years)",
+#                     "Mother’s highest level of education completed",
+#                     "No formal education or some primary school (1 or 2)",
+#                     "Primary school or some secondary school incomplete (3 or 4)",
+#                     "Secondary school or vocational or university/college (5 or 6 or 7)",
+#                     "Gestational age at baseline (weeks)",
+#                     "Child variables",
+#                     "Birth weight-for-age z score",
+#                     "Exclusive breastfeeding",
+#                     "Up-to-date vaccination status")
+# 
+# tab2$order <- NULL
+# tab2 <- tab2 %>%
+#   kable(caption = "Other key characteristics of study population of liveborn children",
+#         col.names = c(paste0("Intervention (N = ", table(df.tab$s6_arm)[2], ")"),
+#                       paste0("Control (N = ", table(df.tab$s6_arm)[2], ")"))) %>%
+#   kableExtra::kable_classic_2(latex_options = "HOLD_position") %>%
+#   add_indent(c(2,3,7,9:11), level_of_indent = 1) %>%
+#   add_indent(c(4:6), level_of_indent = 2) %>%
+#   row_spec(c(1,8), bold = TRUE)
 
 tab2
 
 ```
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, eval=TRUE}
 df.tab3$cxr_dx <- ifelse(is.na(df.tab3$cxr_dx), 0, df.tab3$cxr_dx)
+
+#df.tab3 <- left_join(df.tab3, df.he1x, by = "hhid")
 
 tab3 <- table1x(df.tab3,
                 c("factor(irc)",
                 "factor(agecat)",
                 "factor(c30_sex)",
                 "wt",
-                "factor(malnutrition)",
+                "factor(malnutrition_der)",
                 "factor(vax_u2d)",
                 "factor(fever)",
-                "c36a_hr", #c36_
+                "c36a_hr_high",
                 "rr",
                 "spo2",
                 "factor(hypox)",
@@ -352,17 +611,17 @@ tab3 <- table1x(df.tab3,
                 "factor(grunt2m)",
                 "factor(lus_dx)",
                 "factor(cxr_dx)",
-                #"factor(hospitalized)",
+                "factor(hospitalized)",
                 "factor(oxy_treat)",
                 "factor(adv_respcare)",
                 "factor(death)"
                 ),
                 "factor(s6_arm)")
 
-# tab3 <- tab3[,c(1,2)]
+tab3 <- tab3[,c(1,2,3,4)]
 # 
-# tab3 <- tab3[str_detect(rownames(tab3), "\\b(0)\\b") == "FALSE" &
-#                str_detect(rownames(tab3), "\\b(NA)\\b") == "FALSE",]
+tab3 <- tab3[str_detect(rownames(tab3), "\\b(0)\\b") == "FALSE" &
+               str_detect(rownames(tab3), "\\b(NA)\\b") == "FALSE",]
 # 
 # tab3 <- rowinsert(locations = which(rownames(tab3) %in%
 #                                       c("factor(irc) (Guatemala)",
@@ -421,17 +680,34 @@ tab3 <- table1x(df.tab3,
 #                                         "Hospitalized, n (%)",
 #                     "Oxygen treatment, n (%)",
 #                     "Advanced respiratory supportive care, n (%)",
-#           
+#                     "Mortality, n (%)"))), level_of_indent = 1)
 
-#"Mortality, n (%)"))), level_of_indent = 1)
-# 
-# tab3
+tab3
+```
+
+```{r}
+df.tab3$age_m <- as.numeric(df.tab3$age)/30
+
+
+df.tab3$var <- df.tab3$bc
+
+mean(df.tab3$var[df.tab3$s6_arm == 1], na.rm = T)
+mean(df.tab3$var[df.tab3$s6_arm == 0], na.rm = T)
+
+sd(df.tab3$var[df.tab3$s6_arm == 1], na.rm = T)
+sd(df.tab3$var[df.tab3$s6_arm == 0], na.rm = T)
+
+mean(df.tab3$var, na.rm = T)
+sd(df.tab3$var, na.rm = T)
+
+
+
 ```
 
 
 \newpage
 
-```{r, include=FALSE}
+```{r, include=FALSE, eval=FALSE}
 
 df.base <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_baseline_09-20-2022.csv")
 df.p <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_Visits.xlsx")
@@ -505,7 +781,7 @@ df.base$tenstrata <- factor(df.base$tenstrata,
                             levels = c(10, 9, 8, 7, 6, 5, 3, 2, 1))
 ```
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, eval=FALSE}
 
 fit_gee <- geeglm(pneumonia~ s6_arm + factor(tenstrata),
               offset = (log(fu_day)),
@@ -537,7 +813,7 @@ fit.tab %>%
 
 ```
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, eval=FALSE}
 # df.tab <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab.csv")
 # df.tab3 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
 # 

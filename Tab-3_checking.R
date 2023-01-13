@@ -12,12 +12,16 @@ library(lubridate)
 ###   Data   ###
 ################
 list.files("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/")
-#df1 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
-df1 <- b
-df2 <- readRDS("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/2022-12-15_HAPIN_Primary pneumonia cases.rds") %>% 
+df1 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
+#df1 <- b
+
+df2 <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/2023-01-12_HAPIN_Primary pneumonia cases.xlsx")
+df2 <- df2 %>% 
   dplyr::filter(Pneumonia == 1) %>% 
   dplyr::rename(flaring = c36_flaring) %>% 
   dplyr::mutate(hhid = as.numeric(hhid))
+
+df2$tb3_hypoxemia <- ifelse(is.na(df2$tb3_oxy), NA, df2$tb3_hypoxemia)
 
 df2 %>% 
   dplyr::group_by(s6_Arm) %>% 
@@ -47,13 +51,18 @@ fun.check <- function(var1, var2){
   return(dff)
 }
 
+# fun.check("oxy_treat", "tb3_oxyTx")
+# fun.check("hypox", "tb3_hypoxemia")
+# fun.check("adv_respcare", "tb3_advOxyTx")
 # fun.check("feed2m", "tb3_feed_2m")
 # fun.check("move2m", "tb3_move_2m")
 # fun.check("indraw", "tb3_indraw")
 # fun.check("nodding", "tb3_nodding")
 # fun.check("malnutrition", "tb3_malnutrition")
 # fun.check("wheezcrack","tb3_wheez")
+# fun.check("danger", "tb3_dangerSign")
 
+fun.check("hospitalized", "tb3_hospitalized")
 
 
 fun.check_cont <- function(var1, var2){
@@ -77,75 +86,77 @@ d <- d %>%
 
 #d <- fun.check_cont("c36a_hr_high","tb3_pulse")
 #d <- fun.check_cont("rr","tb3_rr")
-d <- fun.check_cont("spo2","tb3_oxy")
+d <- fun.check_cont("spo2_tb3","tb3_oxy")
 View(d)
 
-d <- d %>%
-  group_by(hhid) %>%
-  mutate(n = 1:n()) %>%
-  filter(!(hhid %in% c(16036, 23218, 23260, 23578, 33095, 33314)))
-
-
-# 33119, 33166
 
 
 #dl <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_05-30-2022.csv")
 
-id = 45024
-#print(df.tab3$date[df.tab3$hhid == id])
-# View(dl %>% filter(hhid %in% c(id)) %>% dplyr::select(hhid, contains("spo2"),contains("date"))
-#      %>% distinct())
+df.c36 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c36_trt_20220909_unfmt.csv")
+df.c36a <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c36atrt_20220909_unfmt.csv")
+df.c40 <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_c40_trt_20220909_unfmt.csv")
 
-View(df.c36 %>% filter(hhid %in% c(id)) %>% dplyr::select(hhid, contains("move"),contains("date")) 
-     %>% distinct())
+id = c(16036)
 
-View(df.c36a %>% filter(hhid %in% c(id)) %>% dplyr::select(hhid, contains("move"),contains("date")) 
-     %>% distinct())
+View(df.c36 %>% filter(hhid %in% c(id)) %>% dplyr::select(hhid, contains("oxy_supplem"),
+                                                          contains("oxy_route"), contains("date")) %>% distinct())
 
-View(df.c40 %>% filter(hhid %in% c(id)) %>% dplyr::select(hhid, contains("move"),contains("date")) 
-     %>% distinct())
+View(df.c36a %>% filter(hhid %in% c(id)) %>% dplyr::select(hhid, contains("oxy_supplem"),
+                                                           contains("oxy_route"), contains("date")) %>% distinct())
+
+View(df.c40 %>% filter(hhid %in% c(id)) %>% dplyr::select(hhid, contains("oxygen"),
+                                                          contains("receive"), contains("date")) %>% distinct())
+
+
+df2 <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/2023-01-06_HAPIN_Primary pneumonia cases.xlsx")
+
+d <- df2 %>% 
+  dplyr::filter(Pneumonia == 1) %>% 
+  dplyr::select(hhid, s6_Arm, tb3_oxyTx, c36_oxy_supplem, c36_oxy_route,# c36a_oxy_supplem, c36a_oxy_route,
+                c40_oxygen, c40_oxygen_2, c40_receive, c40_receive_new1, c40_receive_2,
+                c40_receive_new2, c40_receive_3, c40_receive_new3, c41_oxygen_supplement,
+                c41_oxygen_2_supplement) %>% 
+  dplyr::filter(tb3_oxyTx == 1) %>% 
+  dplyr::filter(!(c36_oxy_supplem==1)) %>% 
+  dplyr::filter(!(c41_oxygen_2_supplement==1))
+dim(d)
+
+# # Oxygen treatment
+# dl$oxy_treat <- 0
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c36_oxy_supplem == 1, 1)
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c36_oxy_route %in% c(1), 1)
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c36a_oxy_supplem == 1, 1)
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c36a_oxy_route  %in% c(1), 1)
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_oxygen == 1, 1)
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_oxygen_2 == 1, 1)
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive == 1, 1)
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_new1 == 1, 1)
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_2 == 1, 1)
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_new2 == 1, 1)
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_3 == 1, 1)
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_new3 == 1, 1)
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c41_oxygen_supplement== 1, 1)
+# dl$oxy_treat <- replace(dl$oxy_treat, dl$c41_oxygen_2_supplement  == 1, 1)
+# table(dl$oxy_treat)
 
 
 
 
-### Heart rate
-# 33166: Pulse was 205 on 2019-10-20
-# 23260: Pulse was 169 on 2020-01-29
+
+
 
 ### Respiratory rate
 # 33119: It was case on 2019-07-05 and RR was 59.5 breath/min. 
 #        However, on 2019-07-06, the patiend had RR 64.5 breaths/min
 # 33166: It was case on 2019-10-17. RR was 72 breaths/min on 2019-10-20.
 
-###SpO2
-# 13306: Mean SpO2 was 93 from C40 form #
-# 15055: Mean SpO2 was 96 from C40 form #
-# 16065: Mean SpO2 was 99 from C40 form #
-# 16092: Mean SpO2 was 97 from C40 form #
-# 23034: Mean SpO2 was 97 from C40 form
-# 23603: Mean SpO2 was 92 from C40 form #
-# 23748: Mean SpO2 was 93 from C40 form #
-# 33080: Mean SpO2 was 80 from C40 form #
-# 33231: Mean SpO2 was 97 from C40 form #
-# 33535: Mean SpO2 was 94 from C40 form #
-# 33549: Mean SpO2 was 92 from C40 form #
-
-# 23260: Head nodding was positive on 2020-01-29
-# 33314: Retraction was positive on 2019-09-17
-
-# Unable to feed(<2m) 
-# 45024: Unable to feed was positive on 2019-09-24 from form C36. It was case on 2019-09-20. So, it was >3days.
-# Also, Unable to feed was positive on 2019-09-22 from form C40. However, c40_feed was not use to define this variable 
-# in the shell table
-
-# Unable to move(<2m): For 45024, c36_move was positive on 2019-09-24, 4 days after it became case.
 
 
+# Unable to feed: 45024: I have it positive because was positive on sept 22 (not sept 24).
+# Positive by which form?
 
-
-
-# How oxycals were calculated? Check
-# Wt and height replaced by _R and _chart?
+# Unable to move: 45024. The same. I have it positive. From which form?
 
 
 

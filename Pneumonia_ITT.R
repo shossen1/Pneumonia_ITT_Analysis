@@ -1098,6 +1098,8 @@ dl <- dl %>% distinct()
 dl$rr <- fun.combine("rr")
 dl$irc <- NULL
 
+dl <- dl %>% dplyr::filter(hhid == 23748)
+
 
 dl$pneumonia <- 0
 dl$pneumonia <- replace(dl$pneumonia,

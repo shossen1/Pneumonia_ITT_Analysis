@@ -40,7 +40,10 @@ df.c36a$c36a_date <- ifelse(as.Date(df.c36a$c36a_h_date) < as.Date(df.c36a$c36a_
                             as.character(df.c36a$c36a_h_date), as.character(df.c36a$c36a_date))
 
 ### There were two forms. Keeping the form from hospital visit
-#df.c36a <- df.c36a %>% dplyr::filter(!(hhid == 33547 & c36a_location == "CAP Sanyuyo"))
+df.c36a <- df.c36a %>% dplyr::filter(!(hhid == 33547 & c36a_location == "CAP Sanyuyo"))
+df.c36a$c36a_nodding <- ifelse(df.c36a$hhid == 33547 & df.c36a$c36a_location == "Jalapa Hospital", 1, df.c36a$c36a_nodding) 
+### Patient was taken to a local health center and then to a hospital on the same day.
+### Nodding was positive during the first visit
 
 ### Recoding and renaming data
 df.c36$c36_crackle <- ifelse(df.c36$c36_crackle == 98, NA, df.c36$c36_crackle)
@@ -114,7 +117,9 @@ df.ptm <- df.ptm %>%
 
 sum(df.pt$pt)
 sum(df.ptl$TotalPersonDays)
-sum(df.ptm$final_pneupersontime)
+sum(df.ptm$final_pneupersontime[df.ptm$s6_arm==1])
+sum(df.ptm$final_pneupersontime[df.ptm$s6_arm==0])
+
 
 dfx <- full_join(df.pt[,c("hhid", "pt"),],
                  df.ptm[,c("hhid", "final_pneupersontime"),],
@@ -205,8 +210,18 @@ df.c40 <- fun.average(df.c40, "c40_date_arrive", "c40", "c40_oxy", "c40_oxy_2", 
 # advanced respiratory support care variable generation
 drc <- df.c40 %>%
   dplyr::select(hhid, c40_date_arrive, contains("_oxygen"), contains("_receive")) %>%
-  dplyr::filter_all(any_vars(. %in% c(4, 2, 3))) %>% 
-  dplyr::mutate(c40_adcare = 1)
+  dplyr::mutate(c40_adcare = ifelse(c40_oxygen == 2 |
+                                  c40_oxygen_2 %in% c(2, 3, 4) |
+                                  c40_receive == 2 |
+                                  c40_receive_new1 %in% c(2, 3, 4) |
+                                  c40_receive_2 == 2 |
+                                  c40_receive_new2 %in% c(2, 3, 4) |
+                                  c40_receive_3 == 2 |
+                                  c40_receive_new3 %in% c(2, 3, 4), 1, 0)) %>% 
+  dplyr::filter(c40_adcare == 1) %>% 
+  distinct()
+  # dplyr::filter_all(any_vars(. %in% c(4, 2, 3))) %>% 
+  # dplyr::mutate(c40_adcare = 1)
 
 # Merging with original dataset
 df.c40 <- left_join(df.c40, drc[,c("hhid", "c40_date_arrive", "c40_adcare")], by = c("hhid", "c40_date_arrive"))
@@ -217,6 +232,25 @@ df.c40$c40_temp <- ifelse(df.c40$c40_temp > 50,
                           (df.c40$c40_temp - 32)*(5/9), df.c40$c40_temp)
 
 table(df.c40$c40_temp)
+
+# Advanced respiratory care:
+#   •	c36_oxy_route==2 or 
+# •	c36a_oxy_route==2 | c36a_oxy_route==3 | c36a_oxy_route==4 or
+
+# •	C40_oxygen == 2 or 
+# •	C40_oxygen_2 == 2 | 3 | 4 or 
+# •	C40_receive == 2 or
+# •	C40_receive_new1 == 2 | 3 | 4 or
+# •	C40_receive_2 == 2 or
+# •	C40_receive_new2 == 2 | 3 | 4 or
+# •	C40_receive_3 == 2 or
+# •	C40_receive_new3 == 2 | 3 | 4
+# 
+# or
+# 
+# C41:
+#   •	c41_oxygen == 2 | 3 or
+# •	C41_oxygen_2 == 2 | 3 | 5
 
 ###############
 ###   C41   ###
@@ -242,7 +276,7 @@ df.c36 <- df.nf %>%
 
 # advanced respiratory support care variable generation
 df.c36 <- fun.average(df.c36, "c36_date", "c36", "c36_oxy_60_R", "c36_oxy_90_R", "c36_oxy_120_R", "c36_oxym", hypox = 1)
-df.c36$c36_oxym <- ifelse(df.c36$c36_oxy_supplem == 1, NA, df.c36$c36_oxym)
+#df.c36$c36_oxym <- ifelse(df.c36$c36_oxy_supplem == 1, NA, df.c36$c36_oxym)
 
 # Average respiratory rate
 #df.c36$c36_rr <- round(apply(df.c36[,c("c36_rr1", "c36_rr2")], 1, mean, na.rm = TRUE))
@@ -290,6 +324,21 @@ for(ii in c("c36_drink", "c36_vomit", "c36_convulsion", "c36_unconscious", "c36_
   print(table(df.c36[[ii]]))
 }
 
+df.dob <- distinct(na.omit(df.nf[,c("hhid", "c30_dob")]))
+df.dob <- df.dob %>% dplyr::rename(c30_dob2 = c30_dob)
+
+df.c36 <- left_join(df.c36, df.dob, by = "hhid")
+df.c36$c30_dob <- ifelse(is.na(df.c36$c30_dob), as.character(df.c36$c30_dob2), as.character(df.c36$c30_dob))
+df.c36$c30_dob2 <- NULL
+
+df.c36$c30_dob <- as.Date(df.c36$c30_dob, format = "%Y-%m-%d")
+df.c36$c36_date <- as.Date(df.c36$c36_date, format = "%Y-%m-%d")
+
+df.c36$c36_age <- ifelse(is.na(df.c36$c36_age), 
+                         round(difftime(df.c36$c36_date, df.c36$c30_dob, units = "days")/30, 1), df.c36$c36_age)
+df.c36$c30_dob <- NULL
+df.c36$c36_date <- as.character(df.c36$c36_date)
+
 df.c36$c36_danger <- ifelse(df.c36$c36_drink == 1 |
                               df.c36$c36_vomit == 1 |
                               df.c36$c36_convulsion == 1 |
@@ -335,7 +384,7 @@ df.c36 <- df.c36 %>% distinct()
 ###   C36a   ###
 ################
 df.c36a <- fun.average(df.c36a, "c36a_h_date", "c36a", "c36a_oxy_60_R", "c36a_oxy_90_R", "c36a_oxy_120_R", "c36a_oxym", hypox =1)
-df.c36a$c36a_oxym <- ifelse(df.c36a$c36a_oxy_supplem == 1, NA, df.c36a$c36a_oxym)
+#df.c36a$c36a_oxym <- ifelse(df.c36a$c36a_oxy_supplem == 1, NA, df.c36a$c36a_oxym)
 
 table(df.c36a$c36a_hypox)
 
@@ -447,6 +496,9 @@ df.c36a <- df.c36a %>%
 ###   Checking date   ###
 #########################
 # This function calculate the time difference between c30_dob to the date of the form and add a variable. eg: c36_from_dob
+data = df.c36
+datevar = "c36_date"
+prefix = "c36"
 fun.datecheck <- function(data, datevar, prefix){
   df.dob <- df.nf %>% 
     dplyr::select(hhid, c30_dob) %>%
@@ -703,8 +755,7 @@ dl <- full_join(df.c36_v, df.c36a_v, by = c("hhid", "date", "form", "wt")) %>%
 
 df.c40.dl <- df.c40 %>%
   dplyr::select(hhid, c40_date_arrive, c40_adcare, c40_oxygen, c40_oxygen_2, contains("c40_receive")) %>%
-  dplyr::rename(date = c40_date_arrive) %>%
-  dplyr::filter(c40_adcare == 1)
+  dplyr::rename(date = c40_date_arrive) 
 
 df.c41.dl <- df.c41 %>%
   dplyr::select(hhid, c41_date_admit, c41_discharge_date,
@@ -720,11 +771,62 @@ dl <- dl %>%
   dplyr::full_join(df.c40.dl, by = c("hhid", "date")) %>%
   dplyr::full_join(df.c41.dl, by = c("hhid", "date"))
 
+############################
+###   Oxygen treatment   ###
+############################
+df.c36oxy <- df.c36 %>% 
+  dplyr::select(hhid, c36_date, c36_oxy_supplem, c36_oxy_route) %>% 
+  dplyr::mutate(form = "c36",
+                oxy_treat = ifelse(c36_oxy_supplem == 1 |
+                                     c36_oxy_route == 1, 1, 0)) %>% 
+  dplyr::filter(oxy_treat == 1) %>% 
+  dplyr::rename(date2 = c36_date) %>% 
+  dplyr::select(hhid, date2, form, oxy_treat)
+
+df.c36aoxy <- df.c36a %>% 
+  dplyr::select(hhid, c36a_date, c36a_oxy_supplem, c36a_oxy_route) %>% 
+  dplyr::mutate(form = "c36a",
+                oxy_treat = ifelse(c36a_oxy_supplem == 1 |
+                                     c36a_oxy_route == 1, 1, 0)) %>% 
+  dplyr::filter(oxy_treat == 1) %>% 
+  dplyr::rename(date2 = c36a_date) %>% 
+  dplyr::select(hhid, date2, form, oxy_treat)
+
+df.c40oxy <- df.c40 %>% 
+  dplyr::select(hhid, c40_date_arrive, c40_oxygen, c40_oxygen_2, contains("_receive")) %>% 
+  dplyr::mutate(form = "c40",
+                oxy_treat = ifelse(c40_oxygen == 1 |
+                                     c40_oxygen_2 == 1 |
+                                     c40_receive == 1 |
+                                     c40_receive_new1 == 1 |
+                                     c40_receive_2 == 1 |
+                                     c40_receive_new2 == 1 |
+                                     c40_receive_3 == 1 |
+                                     c40_receive_new3 == 1, 1, 0)) %>% 
+  dplyr::filter(oxy_treat == 1) %>% 
+  dplyr::rename(date2 = c40_date_arrive) %>% 
+  dplyr::select(hhid, date2, form, oxy_treat)
+
+df.c41oxy <- df.c41 %>% 
+  dplyr::select(hhid, c41_date_admit, c41_oxygen_supplement, c41_oxygen_2_supplement) %>% 
+  dplyr::mutate(form = "c41",
+                oxy_treat = ifelse(c41_oxygen_supplement == 1 |
+                                     c41_oxygen_2_supplement == 1, 1, 0)) %>% 
+  dplyr::filter(oxy_treat == 1) %>% 
+  dplyr::rename(date2 = c41_date_admit) %>% 
+  dplyr::select(hhid, date2, form, oxy_treat)
+
+
+df.oxy <- full_join(df.c36oxy, df.c36aoxy, by = c("hhid", "date2", "form", "oxy_treat")) %>% 
+  full_join(df.c40oxy, by = c("hhid", "date2", "form", "oxy_treat")) %>% 
+  full_join(df.c41oxy, by = c("hhid", "date2", "form", "oxy_treat")) %>% 
+  dplyr::select(-form) %>% 
+  distinct()
+
 ###############################
 ###   Combining variables   ###
 ###############################
 maxlist <- c("c36_temp", "c36a_temp", "c40_temp", "c36a_hr", "c36_rr", "c36a_rr")
-
 minlist <- c("c36_oxym", "c36a_oxym", "c40_oxym")
 
 vlist <- c("danger",
@@ -775,7 +877,17 @@ dll <- dl %>%
     distinct(hhid.x, date, form, .keep_all = TRUE) %>% 
     dplyr::select(-hhid.y) %>% 
     dplyr::rename(hhid = hhid.x) %>% 
-    dplyr::distinct()
+    dplyr::distinct() %>% 
+  fuzzy_left_join(df.oxy, 
+                  by = c(
+                    "hhid" = "hhid",
+                    "pre3" = "date2",
+                    "post3" = "date2"),
+                  match_fun = list(`==`, `<=`, `>=`)) %>% 
+  distinct(hhid.x, date, form, .keep_all = TRUE) %>% 
+  dplyr::select(-hhid.y) %>% 
+  dplyr::rename(hhid = hhid.x) %>% 
+  dplyr::distinct() 
   
 for(hh in maxlist){
 print(hh)
@@ -809,6 +921,7 @@ for(ii in minlist){
 ### Spo2 and Hypoxia
 dll$spo2 <- as.numeric(apply(dll[,c("c36_oxym_low", "c36a_oxym_low", "c40_oxym_low")], 1, min, na.rm = TRUE))
 dll$spo2 <- ifelse(dll$spo2 %in% c("Inf", "-Inf"), NA, dll$spo2)
+#dll$spo2 <- ifelse(is.na(dll$spo2), dll$c40_oxym_low, dll$spo2)
 dll$spo2 <- ifelse(as.numeric(dll$spo2) < 70, 70, as.numeric(dll$spo2))
 
 dll$hypox <- ifelse(dll$irc == "Peru" & dll$spo2 <= 86, 1,
@@ -878,10 +991,6 @@ for(vv in vlist){
 
 dl <- left_join(dl, dll, by = c("hhid", "date"))
 
-# 33547 nodding: CAP Sanyuyo
-# LUS and CXR high variable
-# renaming the variables names below and creating diagnosis variables
-
 
 ### Hospitalized
 dl$c36_hospitalized <- ifelse(dl$c36_after == 2 &
@@ -935,28 +1044,10 @@ dl$c41_hospitalized <- ifelse(difftime(as.Date(dl$c41_discharge_date),
                                    dl$c41_diagnosisx_2 == 1), 1, 0)
 
 
-# Oxygen treatment
-dl$oxy_treat <- 0
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c36_oxy_supplem == 1, 1)
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c36_oxy_route == 1, 1)
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c36a_oxy_supplem == 1, 1)
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c36a_oxy_route == 1, 1)
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_oxygen == 1, 1)
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_oxygen_2 == 1, 1)
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive == 1, 1)
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_new1 == 1, 1)
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_2 == 1, 1)
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_new2 == 1, 1)
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_3 == 1, 1)
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c40_receive_new3 == 1, 1)
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c41_oxygen_supplement== 1, 1)
-dl$oxy_treat <- replace(dl$oxy_treat, dl$c41_oxygen_2_supplement  == 1, 1)
-table(dl$oxy_treat)
-
 # Advanced respiratory care
 dl$adv_respcare <- 0
 dl$adv_respcare <- replace(dl$adv_respcare, dl$c36_oxy_route == 2, 1)
-dl$adv_respcare <- replace(dl$adv_respcare, dl$c36a_oxy_route == 2, 1)
+dl$adv_respcare <- replace(dl$adv_respcare, dl$c36a_oxy_route %in% c(2,3,4), 1)
 dl$adv_respcare <- replace(dl$adv_respcare, dl$c40_oxygen == 2, 1)
 dl$adv_respcare <- replace(dl$adv_respcare, dl$c40_oxygen_2 %in% c(2,3,4), 1)
 dl$adv_respcare <- replace(dl$adv_respcare, dl$c40_receive == 2, 1)
@@ -971,20 +1062,6 @@ dl$adv_respcare <- replace(dl$adv_respcare, dl$c41_oxygen_2_positive == 1, 1)
 dl$adv_respcare <- replace(dl$adv_respcare, dl$c41_oxygen_2_mechanical == 1, 1)
 table(dl$adv_respcare)
 
-# ##########################################
-# ##########################################
-# dl <- left_join(dl, df.nf[,c("hhid", "e2_participant", "e2_type")], by = "hhid")
-# 
-# dl$death <- ifelse((dl$e2_participant == 3 &
-#                       dl$e2_type == 1 &
-#                       (difftime(as.Date(dl$e2_death_date), as.Date(dl$date), units = "days") < 30)) |
-#                      dl$pcvaCoD == "Probable pneumonia", 1, 0)
-# 
-# dl$death <- ifelse(is.na(dl$death), 0, dl$death)
-# 
-# table(dl$death)
-
-
 
 dl$pneumonia <- 0
 dl$pneumonia <- replace(dl$pneumonia,
@@ -997,17 +1074,9 @@ dl$pneumonia <- replace(dl$pneumonia,
                           (dl$c36a_danger_high == 1 | dl$c36a_malnutrition_der_high == 1) &
                           (dl$cxr_dx_high == 1 | dl$lus_dx_high == 1), 1)
 
-# dl$pneumonia <- replace(dl$pneumonia,
-#                         (dl$c36_cough_high == 1 | dl$c36_dyspnea_high == 1) &
-#                           (dl$c36_hypox_high == 1 | dl$c36a_hypox_high == 1 | dl$c40_hypox_high == 1), 1)
-
 dl$pneumonia <- replace(dl$pneumonia,
                         (dl$c36_cough_high == 1 | dl$c36_dyspnea_high == 1) &
                           (dl$hypox_high == 1), 1)
-
-# dl$pneumonia <- replace(dl$pneumonia,
-#                         (dl$c36a_cough_high == 1 | dl$c36a_dyspnea_high == 1) &
-#                           (dl$c36_hypox_high == 1 | dl$c36a_hypox_high == 1 | dl$c40_hypox_high == 1), 1)
 
 dl$pneumonia <- replace(dl$pneumonia,
                         (dl$c36a_cough_high == 1 | dl$c36a_dyspnea_high == 1) &
@@ -1026,9 +1095,6 @@ dl$pneumonia <- replace(dl$pneumonia, dl$c36a_oxy_route == 2 |
 dl$pneumonia <- replace(dl$pneumonia, dl$pcvaCoD == "Probable pneumonia", 1)
 
 table(dl$pneumonia)
-
-#dl$hypox <- fun.combine("hypox")
-#dl$hypox <- ifelse(dl$c40_oxym <= 86 & !is.na(dl$c40_oxym), 1, dl$hypox)
 
 df.tab <- df.nf %>%
   dplyr::filter(timepoint == "BL") %>% 
@@ -1113,158 +1179,153 @@ df.tab <- dfy %>%
   dplyr::right_join(df.tab, by = "hhid")
 
 
-###############
-###   SES   ###
-###############
-# fun.ses1 = function(datain, var){
-#   list1 = paste0("m10_", var, "_",c("Thatch", "WovenReed", "Wattle", "Mud"))
-#   list2 = paste0("m10_", var, "_", c("Mudbrick", "EarthenTile", "Stone",  "Firedbrick", "CorrMetal",
-#                                      "CorrFglass", "Concrete", "Wood", "Vinyl", "FiredTile"))
-#   
-#   datain$unimproved_max = apply(dplyr::select(datain, list1), 1, max, na.rm = TRUE)
-#   datain$improved_max = apply(dplyr::select(datain, list2), 1, max, na.rm = TRUE)
-#   
-#   datain[[paste0(var, "_ses")]] = ifelse(datain$improved_max == 1, 1, 
-#                                          ifelse(datain$improved_max != 1 & datain$unimproved_max == 1, 0, NA))
-#   
-#   datain$improved_max = NULL
-#   datain$unimproved_max = NULL
-#   message(paste0("Total ", sum(is.na(datain[[paste0(var, "_ses")]])), " missing"))
-#   return(datain)
-# }
-# df.tab = fun.ses1(df.tab, "roof") 
-# df.tab = fun.ses1(df.tab, "floor")
-# df.tab = fun.ses1(df.tab, "wall")
-# 
-# for(i in c("Thatch", 
-#            "WovenReed", 
-#            "Wattle", 
-#            "Mud",
-#            "Mudbrick",
-#            "EarthenTile",
-#            "Stone",
-#            "Firedbrick",
-#            "CorrMetal",
-#            "CorrFglass",
-#            "Concrete",
-#            "Wood",
-#            "Vinyl",
-#            "FiredTile")){
-#   print(i)
-#   print(sum(is.na(df.tab[[paste0("m10_roof_",i)]])))
-#   print(sum(is.na(df.tab[[paste0("m10_wall_",i)]])))
-#   print(sum(is.na(df.tab[[paste0("m10_floor_",i)]])))
-# }
-# 
-# # Checking asset variables
-# assetlist = c("m10_color_tv", "m10_cable_tv", "m10_radio", "m10_computer", "m10_internet", "m10_phone",
-#               "m10_watch", "m10_ac", "m10_heater", "m10_bookshelf", "m10_blind", "m10_sofa", "m10_table",
-#               "m10_mattress", "m10_microwave", "m10_cooker", "m10_blender", "m10_refrigerator", "m10_bank",
-#               "m10_wash", "m10_bicycle", "m10_motocycle", "m10_car", "m10_tractor", "m10_phone", "m10_elect")
-# 
-# for(i in assetlist){
-#   print(paste0(i, " missing: ", sum(is.na(df.tab[[i]]))))
-#   print(table(df.tab[[i]])) 
-# }
-# 
-# # Checking animal variables and recoding
-# animallist = c("m10_chicken", "m10_rabbit", "m10_sheep", "m10_pig", "m10_cow", "m10_mule", "m10_dog")
-# animallist2 = c("m10_chicken_2", "m10_rabbit_2", "m10_sheep_2", "m10_pig_2", "m10_cow_2", "m10_mule_2", "m10_dog_2")
-# 
-# for(i in animallist){
-#   print(paste0(i, " missing: ", sum(is.na(df.tab[[i]]))))
-#   print(table(df.tab[[i]])) 
-#   df.tab[[paste0(i, "_ses")]] = ifelse(df.tab[[i]] == 0, 0, 
-#                                    ifelse(df.tab[[i]] >= 1, 1, df.tab[[i]]))
-#   print(table(df.tab[[paste0(i, "_ses")]])) 
-# }
-# 
-# df.tab$water_source_ses = ifelse(df.tab$m10_water_source %in% c(7, 9, 14), 0, 
-#                                  ifelse(df.tab$m10_water_source %in% c(1, 2, 3, 4, 5, 6, 8, 10, 11, 12, 13, 15, 16), 1, NA))
-# 
-# df.tab$toilet_ses = ifelse(df.tab$m10_toilet %in% c(0, 4, 5, 7, 10, 11, 12), 0, 
-#                            ifelse(df.tab$m10_toilet %in% c(1, 2, 3, 6, 8, 9), 1, NA))
-# 
-# ### Recoding water source others
-# water.unim = c("Agua de rio", "De rio", "Esposo de participante traslada agua de paucarcolla", "Trae desde taraco")
-# water.im = c("Agua de pozo proteguido de vecino", "AGUA EN MANGERADA",
-#              "buying water from boys who use bycicle to transport water",
-#              "Captación de sub suelo con motor", "CASA DE LA MAMA", "CHORRO COMUNITARIO", 
-#              "El caño de agua se encuentra a 200metros de la casa", "Filter iri ahandi",
-#              "JALA EL AGUA DE LA CASA DE LA SUEGRA CON MANGUERA",
-#              "LA JALA CON MANGUERRA DE LA CASA VECINA",
-#              "LE PASAN EL AGUA EN MANGUERA DE LA CASA DEL VECINO QUE ES ENTUBADA",
-#              "she buys water from ridermen",
-#              "Water tank")
-# 
-# df.tab$water_source_ses = ifelse((df.tab$m10_water_other %in% water.unim)=="TRUE", 0, df.tab$water_source_ses)
-# df.tab$water_source_ses = ifelse((df.tab$m10_water_other %in% water.im)=="TRUE", 1, df.tab$water_source_ses)
-# table(df.tab$water_source_ses)
-# 
-# ### Recoding toilet others
-# toilet.unim = c("Agujero elaboarado por  la familia.", "CASA DE LA MAMA POZO", 
-#                 "Icyobo kirambitseho imiti Ariko nta musarane uhari", "The latrine of neighbors",
-#                 "The latrine with one pit is under construction.", 
-#                 "The new toilet is under construction because the old one is full.",
-#                 "umusarani urambitseho ibiti, urebamo", "umusarani wo kurusengero utinze",
-#                 "under construction", "Under construction")
-# 
-# toilet.im = c("BAÑO EN CASA DE LA SUEGRA", "Letrina ecológico", "Neighbour's toilet", "Neighbour's Toilet",
-#               "Neighbour's Toilet.", "umusarani utinze w, umuturanyi", "umusarani w/o kumuturanyi")
-# 
-# df.tab$toilet_ses = ifelse((df.tab$m10_toilet_other %in% toilet.unim)=="TRUE", 0, df.tab$toilet_ses)
-# df.tab$toilet_ses = ifelse((df.tab$m10_toilet_other %in% toilet.im)=="TRUE", 1, df.tab$toilet_ses)
-# table(df.tab$toilet_ses)
-# 
-# # Original coding: fies_cat: 0, None | 1, Mild | 2, Moderate | 3, Severe
-# # Proposed coding for SES:
-# # 1. Moderate/Severe
-# # 2. Mild
-# # 3. None
-# df.tab$fies_cat_ses = ifelse(df.tab$fies_cat == 0, 3, 
-#                              ifelse(df.tab$fies_cat == 1, 2, 
-#                                     ifelse(df.tab$fies_cat >= 2, 1, NA)))
-# 
-# df.tab$m10_sleep_ses = 1/df.tab$m10_sleep
-# 
-# 
-# df.ses = df.tab %>%
-#   dplyr::select(hhid, roof_ses, floor_ses, wall_ses, assetlist, animallist, water_source_ses, toilet_ses,
-#                 fies_cat_ses, m10_educ_R, m10_sleep_ses, m10_elect, s6_arm, irc)
-# 
-# 
-# ###############################
-# ###   Multiple imputation   ###
-# ###############################
-# df.ses = mice(df.ses, m=5, maxit = 50, method = 'pmm', seed = 443527)
-# df.ses = complete(df.ses, 2)
-# 
-# ###########################
-# ###   PCA calculation   ###
-# ###########################
-# pca = prcomp(~ roof_ses + floor_ses + wall_ses + m10_color_tv + m10_cable_tv + m10_radio + m10_computer +
-#                m10_internet + m10_watch + m10_ac + m10_heater + m10_bookshelf + m10_blind + m10_sofa +
-#                m10_table + m10_mattress + m10_microwave + m10_cooker + m10_blender + m10_refrigerator + m10_bank +
-#                m10_wash + m10_bicycle + m10_motocycle + m10_car + m10_tractor + m10_phone + toilet_ses +
-#                #m10_chicken + m10_rabbit + m10_sheep + m10_pig + m10_cow + m10_mule + m10_dog +
-#                water_source_ses +
-#                fies_cat_ses + m10_educ_R + m10_sleep_ses + m10_elect,
-#              data = df.ses, scale=F, na.action = "na.exclude")
-# 
-# # use first principal component
-# pca1 = pca$x[,1]
-# df.ses$pca = pca1
-# df.tab = left_join(df.tab, df.ses[,c("hhid", "pca")], by = "hhid")
-# 
-# summary(pca)
+##############
+##   SES   ###
+##############
+fun.ses1 = function(datain, var){
+  list1 = paste0("m10_", var, "_",c("Thatch", "WovenReed", "Wattle", "Mud"))
+  list2 = paste0("m10_", var, "_", c("Mudbrick", "EarthenTile", "Stone",  "Firedbrick", "CorrMetal",
+                                     "CorrFglass", "Concrete", "Wood", "Vinyl", "FiredTile"))
+
+  datain$unimproved_max = apply(dplyr::select(datain, list1), 1, max, na.rm = TRUE)
+  datain$improved_max = apply(dplyr::select(datain, list2), 1, max, na.rm = TRUE)
+
+  datain[[paste0(var, "_ses")]] = ifelse(datain$improved_max == 1, 1,
+                                         ifelse(datain$improved_max != 1 & datain$unimproved_max == 1, 0, NA))
+
+  datain$improved_max = NULL
+  datain$unimproved_max = NULL
+  message(paste0("Total ", sum(is.na(datain[[paste0(var, "_ses")]])), " missing"))
+  return(datain)
+}
+df.tab = fun.ses1(df.tab, "roof")
+df.tab = fun.ses1(df.tab, "floor")
+df.tab = fun.ses1(df.tab, "wall")
+
+for(i in c("Thatch",
+           "WovenReed",
+           "Wattle",
+           "Mud",
+           "Mudbrick",
+           "EarthenTile",
+           "Stone",
+           "Firedbrick",
+           "CorrMetal",
+           "CorrFglass",
+           "Concrete",
+           "Wood",
+           "Vinyl",
+           "FiredTile")){
+  print(i)
+  print(sum(is.na(df.tab[[paste0("m10_roof_",i)]])))
+  print(sum(is.na(df.tab[[paste0("m10_wall_",i)]])))
+  print(sum(is.na(df.tab[[paste0("m10_floor_",i)]])))
+}
+
+# Checking asset variables
+assetlist = c("m10_color_tv", "m10_cable_tv", "m10_radio", "m10_computer", "m10_internet", "m10_phone",
+              "m10_watch", "m10_ac", "m10_heater", "m10_bookshelf", "m10_blind", "m10_sofa", "m10_table",
+              "m10_mattress", "m10_microwave", "m10_cooker", "m10_blender", "m10_refrigerator", "m10_bank",
+              "m10_wash", "m10_bicycle", "m10_motocycle", "m10_car", "m10_tractor", "m10_phone", "m10_elect")
+
+for(i in assetlist){
+  print(paste0(i, " missing: ", sum(is.na(df.tab[[i]]))))
+  print(table(df.tab[[i]]))
+}
+
+# Checking animal variables and recoding
+animallist = c("m10_chicken", "m10_rabbit", "m10_sheep", "m10_pig", "m10_cow", "m10_mule", "m10_dog")
+animallist2 = c("m10_chicken_2", "m10_rabbit_2", "m10_sheep_2", "m10_pig_2", "m10_cow_2", "m10_mule_2", "m10_dog_2")
+
+for(i in animallist){
+  print(paste0(i, " missing: ", sum(is.na(df.tab[[i]]))))
+  print(table(df.tab[[i]]))
+  df.tab[[paste0(i, "_ses")]] = ifelse(df.tab[[i]] == 0, 0,
+                                   ifelse(df.tab[[i]] >= 1, 1, df.tab[[i]]))
+  print(table(df.tab[[paste0(i, "_ses")]]))
+}
+
+df.tab$water_source_ses = ifelse(df.tab$m10_water_source %in% c(7, 9, 14), 0,
+                                 ifelse(df.tab$m10_water_source %in% c(1, 2, 3, 4, 5, 6, 8, 10, 11, 12, 13, 15, 16), 1, NA))
+
+df.tab$toilet_ses = ifelse(df.tab$m10_toilet %in% c(0, 4, 5, 7, 10, 11, 12), 0,
+                           ifelse(df.tab$m10_toilet %in% c(1, 2, 3, 6, 8, 9), 1, NA))
+
+### Recoding water source others
+water.unim = c("Agua de rio", "De rio", "Esposo de participante traslada agua de paucarcolla", "Trae desde taraco")
+water.im = c("Agua de pozo proteguido de vecino", "AGUA EN MANGERADA",
+             "buying water from boys who use bycicle to transport water",
+             "Captación de sub suelo con motor", "CASA DE LA MAMA", "CHORRO COMUNITARIO",
+             "El caño de agua se encuentra a 200metros de la casa", "Filter iri ahandi",
+             "JALA EL AGUA DE LA CASA DE LA SUEGRA CON MANGUERA",
+             "LA JALA CON MANGUERRA DE LA CASA VECINA",
+             "LE PASAN EL AGUA EN MANGUERA DE LA CASA DEL VECINO QUE ES ENTUBADA",
+             "she buys water from ridermen",
+             "Water tank")
+
+df.tab$water_source_ses = ifelse((df.tab$m10_water_other %in% water.unim)=="TRUE", 0, df.tab$water_source_ses)
+df.tab$water_source_ses = ifelse((df.tab$m10_water_other %in% water.im)=="TRUE", 1, df.tab$water_source_ses)
+table(df.tab$water_source_ses)
+
+### Recoding toilet others
+toilet.unim = c("Agujero elaboarado por  la familia.", "CASA DE LA MAMA POZO",
+                "Icyobo kirambitseho imiti Ariko nta musarane uhari", "The latrine of neighbors",
+                "The latrine with one pit is under construction.",
+                "The new toilet is under construction because the old one is full.",
+                "umusarani urambitseho ibiti, urebamo", "umusarani wo kurusengero utinze",
+                "under construction", "Under construction")
+
+toilet.im = c("BAÑO EN CASA DE LA SUEGRA", "Letrina ecológico", "Neighbour's toilet", "Neighbour's Toilet",
+              "Neighbour's Toilet.", "umusarani utinze w, umuturanyi", "umusarani w/o kumuturanyi")
+
+df.tab$toilet_ses = ifelse((df.tab$m10_toilet_other %in% toilet.unim)=="TRUE", 0, df.tab$toilet_ses)
+df.tab$toilet_ses = ifelse((df.tab$m10_toilet_other %in% toilet.im)=="TRUE", 1, df.tab$toilet_ses)
+table(df.tab$toilet_ses)
+
+# Original coding: fies_cat: 0, None | 1, Mild | 2, Moderate | 3, Severe
+# Proposed coding for SES:
+# 1. Moderate/Severe
+# 2. Mild
+# 3. None
+df.tab$fies_cat_ses = ifelse(df.tab$fies_cat == 0, 3,
+                             ifelse(df.tab$fies_cat == 1, 2,
+                                    ifelse(df.tab$fies_cat >= 2, 1, NA)))
+
+df.tab$m10_sleep_ses = 1/df.tab$m10_sleep
+
+
+df.ses = df.tab %>%
+  dplyr::select(hhid, roof_ses, floor_ses, wall_ses, assetlist, animallist, water_source_ses, toilet_ses,
+                fies_cat_ses, m10_educ_R, m10_sleep_ses, m10_elect, s6_arm, irc)
+
+
+###############################
+###   Multiple imputation   ###
+###############################
+df.ses = mice(df.ses, m=5, maxit = 50, method = 'pmm', seed = 443527)
+df.ses = complete(df.ses, 2)
+
+###########################
+###   PCA calculation   ###
+###########################
+pca = prcomp(~ roof_ses + floor_ses + wall_ses + m10_color_tv + m10_cable_tv + m10_radio + m10_computer +
+               m10_internet + m10_watch + m10_ac + m10_heater + m10_bookshelf + m10_blind + m10_sofa +
+               m10_table + m10_mattress + m10_microwave + m10_cooker + m10_blender + m10_refrigerator + m10_bank +
+               m10_wash + m10_bicycle + m10_motocycle + m10_car + m10_tractor + m10_phone + toilet_ses +
+               #m10_chicken + m10_rabbit + m10_sheep + m10_pig + m10_cow + m10_mule + m10_dog +
+               water_source_ses +
+               fies_cat_ses + m10_educ_R + m10_sleep_ses + m10_elect,
+             data = df.ses, scale=F, na.action = "na.exclude")
+
+# use first principal component
+pca1 = pca$x[,1]
+df.ses$pca = pca1
+df.tab = left_join(df.tab, df.ses[,c("hhid", "pca")], by = "hhid")
+
+summary(pca)
 
 
 write.csv(df.tab, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab.csv")
-
-#write.csv(dl, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/dl_temp.csv")
-
-
-
 
 df.tab3 <- dl %>%
   dplyr::filter(pneumonia == 1) %>%
@@ -1319,9 +1380,106 @@ df.tab3$agecat <- ifelse(df.tab3$age <60, "<2m",
                                 ifelse(df.tab3>=180 & df.tab3$age <366, "6-12", NA)))
 
 df.tab3 <- df.tab3 %>% 
-  dplyr::left_join(df.tab[,c("hhid", "irc")], by = "hhid")
+  dplyr::left_join(df.tab[,c("hhid", "irc")], by = c("hhid", "irc"))
 
 df.tab3$danger <- ifelse(is.na(df.tab3$danger), 0, df.tab3$danger)
+
+
+df.tab3$hypox <- ifelse(df.tab3$irc == "Peru" & df.tab3$spo2 <= 86, 1,
+                        ifelse(df.tab3$irc %in% c("Guatemala", "India", "Rwanda") &
+                                 df.tab3$spo2 <= 92, 1,
+                               ifelse(is.na(df.tab3$spo2), NA, 0)))
+
+
+df.tab3$spo2 <- ifelse(df.tab3$hhid %in% c(13019, 13306, 15055, 16065, 16092, 23034, 23503, 23603,
+                                           23748, 33066, 33080, 33131, 33140, 33231, 33381, 33410,
+                                           33461, 33482, 33520, 33535, 33549, 35011), NA, df.tab3$spo2)
+
+df.tab3$hypox <- ifelse(df.tab3$irc == "Peru" & df.tab3$spo2 <= 86, 1,
+                        ifelse(df.tab3$irc %in% c("Guatemala", "India", "Rwanda") &
+                                 df.tab3$spo2 <= 92, 1,
+                               ifelse(is.na(df.tab3$spo2), NA, 0)))
+
+#################
+###   Death   ###
+#################
+df.death <- df.tab3 %>% 
+  dplyr::select(-e2_death_date, hhid) %>% 
+  left_join(df.nf[,c("hhid", "e2_participant", "e2_type")], by = "hhid") %>% 
+  left_join(df.exit[,c("hhid", "e2_death_date")], by = "hhid") %>% 
+  dplyr::select(hhid, s6_arm, date, e2_death_date, e2_participant, e2_type, pcvaCoD) %>% 
+  distinct() %>% 
+  dplyr::mutate(death = ifelse((e2_participant == 3 &
+                                  e2_type == 1 &
+                                  (difftime(as.Date(e2_death_date), as.Date(date), units = "days") < 30)) |
+                                 pcvaCoD == "Probable pneumonia", 1, 0)) %>% 
+  dplyr::filter(death == 1) %>% 
+  distinct(hhid, date, .keep_all = TRUE) %>% 
+  dplyr::select(hhid, date, death)
+
+df.tab3 <- left_join(df.tab3, df.death, by = c("hhid", "date"))
+
+########################
+###   Hospitalized   ###
+########################
+df.c36hosp <- df.c36 %>% 
+  dplyr::select(hhid, c36_date, c36_after) %>% 
+  dplyr::filter(c36_after == 2)
+
+df.c36ahosp <- df.c36a %>% 
+  dplyr::select(hhid, c36a_date, c36a_after) %>% 
+  dplyr::filter(c36a_after == 2)
+
+df.c41hosp <- df.c41 %>% 
+  dplyr::select(hhid, c41_date_admit, c41_discharge_date) %>% 
+  dplyr::filter(!is.na(c41_date_admit)) %>%
+  dplyr::filter(difftime(as.Date(c41_discharge_date), as.Date(c41_date_admit), units = "days") >= 1) %>% 
+  distinct()
+
+df.hosp <- df.tab3 %>% 
+  dplyr::select(hhid, date) %>% 
+  dplyr::mutate(pre3 = as.Date(date) - 3,
+                post3 = as.Date(date) + 3) %>% 
+  fuzzy_left_join(df.c36hosp,
+                by = c(
+                  "hhid" = "hhid",
+                  "pre3" = "c36_date",
+                  "post3" = "c36_date"),
+                match_fun = list(`==`, `<=`, `>=`)) %>% 
+  dplyr::select(-hhid.y) %>% 
+  dplyr::rename(hhid = hhid.x) %>% 
+  fuzzy_left_join(df.c36ahosp,
+                  by = c(
+                    "hhid" = "hhid",
+                    "pre3" = "c36a_date",
+                    "post3" = "c36a_date"),
+                  match_fun = list(`==`, `<=`, `>=`)) %>% 
+  dplyr::select(-hhid.y) %>% 
+  dplyr::rename(hhid = hhid.x) %>% 
+  fuzzy_left_join(df.c41hosp,
+                  by = c(
+                    "hhid" = "hhid",
+                    "pre3" = "c41_date_admit",
+                    "post3" = "c41_date_admit"),
+                  match_fun = list(`==`, `<=`, `>=`)) %>% 
+  dplyr::rename(hhid = hhid.x) %>% 
+  dplyr::select(-hhid.y, -pre3, -post3, -c36_date, -c36a_date) %>% 
+  distinct() %>% 
+  dplyr::mutate(hospitalized = ifelse(c36_after == 2 |
+                                        c36a_after == 2 |
+                                        !is.na(c41_date_admit), 1, 0)) %>% 
+  dplyr::select(hhid, date, hospitalized) %>% 
+  distinct()
+
+
+df.tab3 <- left_join(df.tab3, df.hosp, by = c("hhid", "date"))
+
+
+for(bb in c("malnutrition_der", "respdanger", "indraw", "nodding", "flaring", "grunt", "stridor",
+            "wheez", "tugging", "retraction", "drink", "oxy_treat", "death", "grunt2m", "sindraw2m",
+            "feed2m", "neodanger", "unconscious", "convulsion", "vomit", "move2m", "hospitalized")){
+  df.tab3[[bb]] <- ifelse(is.na(df.tab3[[bb]]), 0, df.tab3[[bb]])
+}
 
 write.csv(df.tab3, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.tab3.csv")
 write.csv(df.c36, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c36.csv")
@@ -1330,55 +1488,55 @@ write.csv(df.c40, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c40.csv"
 write.csv(df.c41, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/df.c41.csv")
 
 
-dd <- dl %>%
-  right_join(df.tab3[,c("hhid", "date")], by = c("hhid", "date")) %>% 
-  dplyr::select(hhid, date, c36_hospitalized, c36a_hospitalized, c41_hospitalized,
-                c36_after, c36_cough, c36_hypox, c36_oxy_supplem, c36_wheez, c36_crackle,
-                c36_diff_breath, c36_fastbreath, c36_nodding, c36_flaring, c36_grunt, c36_stridor,
-                c36_tugging, c36_indraw, c36_s_indraw, c36_retraction,
-                c36a_after, c36a_cough, c36a_dyspnea, c36a_hypox, c36a_oxy_supplem, c36a_wheez, c36a_crackle,
-                c36a_diff_breath, c36a_fastbreath, c36a_nodding, c36a_flaring, c36a_grunt, c36a_stridor,
-                c36a_tugging, c36a_indraw, c36a_s_indraw, c36a_retraction,
-                lus_dx, cxr_dx, c41_discharge_date, c41_date_admit,
-                c41_oxygen_supplement, c41_oxygen_2_supplement,
-                c41_oxygen_positive, c41_oxygen_2_positive,
-                c41_oxygen_mechanical, c41_oxygen_2_mechanical,
-                c41_oxygen_2_nasal, c41_wheeze, c41_crackle, c41_dilator, c41_cxray,
-                c41_diagnosis, c41_diagnosis_2,
-                c41_diagnosisx, c41_diagnosisx_2) %>%
-  dplyr::mutate(hospitalized_with_resp = ifelse((c36_hospitalized == 1 |
-                                                   c36a_hospitalized == 1 |
-                                                   c41_hospitalized == 1), 1, 0),
-                hospitalized_any = ifelse(c36_after == 2 |
-                                            c36a_after == 2 |
-                                            (difftime(as.Date(c41_discharge_date), 
-                                                      as.Date(c41_date_admit), units = "days") >= 1), 1, 0)) %>%
-  distinct(hhid, date, .keep_all = TRUE) 
-
-for(i in colnames(dd)){
-  dd[[i]] <- ifelse(dd[[i]] == 888, NA, dd[[i]])
-  dd[[i]] <- ifelse(is.na(dd[[i]]), 0, dd[[i]])
-}
-
-write.csv(dd, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/hospitalized_case.csv")
-
-
-
-dl$pneumonia <- NULL
-dl <- dl %>% 
-  dplyr::left_join(df.tab3[,c("hhid", "date", "pneumonia")], by = c("hhid", "date"))
-
-table(df.tab3$pneumonia)
-table(dl$pneumonia)
-
-write.csv(dl, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_05-30-2022.csv")
-
-
-
-
-
-
-
+# dd <- dl %>%
+#   right_join(df.tab3[,c("hhid", "date")], by = c("hhid", "date")) %>% 
+#   dplyr::select(hhid, date, c36_hospitalized, c36a_hospitalized, c41_hospitalized,
+#                 c36_after, c36_cough, c36_hypox, c36_oxy_supplem, c36_wheez, c36_crackle,
+#                 c36_diff_breath, c36_fastbreath, c36_nodding, c36_flaring, c36_grunt, c36_stridor,
+#                 c36_tugging, c36_indraw, c36_s_indraw, c36_retraction,
+#                 c36a_after, c36a_cough, c36a_dyspnea, c36a_hypox, c36a_oxy_supplem, c36a_wheez, c36a_crackle,
+#                 c36a_diff_breath, c36a_fastbreath, c36a_nodding, c36a_flaring, c36a_grunt, c36a_stridor,
+#                 c36a_tugging, c36a_indraw, c36a_s_indraw, c36a_retraction,
+#                 lus_dx, cxr_dx, c41_discharge_date, c41_date_admit,
+#                 c41_oxygen_supplement, c41_oxygen_2_supplement,
+#                 c41_oxygen_positive, c41_oxygen_2_positive,
+#                 c41_oxygen_mechanical, c41_oxygen_2_mechanical,
+#                 c41_oxygen_2_nasal, c41_wheeze, c41_crackle, c41_dilator, c41_cxray,
+#                 c41_diagnosis, c41_diagnosis_2,
+#                 c41_diagnosisx, c41_diagnosisx_2) %>%
+#   dplyr::mutate(hospitalized_with_resp = ifelse((c36_hospitalized == 1 |
+#                                                    c36a_hospitalized == 1 |
+#                                                    c41_hospitalized == 1), 1, 0),
+#                 hospitalized_any = ifelse(c36_after == 2 |
+#                                             c36a_after == 2 |
+#                                             (difftime(as.Date(c41_discharge_date), 
+#                                                       as.Date(c41_date_admit), units = "days") >= 1), 1, 0)) %>%
+#   distinct(hhid, date, .keep_all = TRUE) 
+# 
+# for(i in colnames(dd)){
+#   dd[[i]] <- ifelse(dd[[i]] == 888, NA, dd[[i]])
+#   dd[[i]] <- ifelse(is.na(dd[[i]]), 0, dd[[i]])
+# }
+# 
+# write.csv(dd, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/hospitalized_case.csv")
+# 
+# 
+# 
+# dl$pneumonia <- NULL
+# dl <- dl %>% 
+#   dplyr::left_join(df.tab3[,c("hhid", "date", "pneumonia")], by = c("hhid", "date"))
+# 
+# table(df.tab3$pneumonia)
+# table(dl$pneumonia)
+# 
+# write.csv(dl, "/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/Pneumonia_ITT_05-30-2022.csv")
+# 
+# 
+# 
+# 
+# 
+# 
+#
 #################
 ###   Notes   ###
 #################
