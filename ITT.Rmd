@@ -320,6 +320,9 @@ df.base$vaxgroup <- ifelse(df.base$Exit < df.base$week8, "<8w",
 
 sum(is.na(df.base$vaxgroup))
 
+# df.nf <- read.csv("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_ITTtrt_20220909_unfmt.csv")
+# df.p <- read_excel("/Users/shakir777/Dropbox/HAPIN/Pneumonia ITT/Data/HAPIN_Pneumonia_Visits.xlsx") 
+### Smaller dataset with vaccination dates
 df.vax <- df.nf %>% 
   dplyr::select(hhid, contains("c42_")) %>% 
   left_join(df.base[,c("hhid", "irc", "Exit", "OneYear", "c30_dob", "vaxgroup", "week8", "week12", "week32")], by = "hhid") %>% 
@@ -328,6 +331,7 @@ df.vax <- df.nf %>%
 
 table(is.na(df.vax$c42_pneumo_time) & is.na(df.vax$c42_penta_time) & is.na(df.vax$c42_measles_time))
 
+### Vaccination windows
 df.vax$start1 <- as.Date(df.vax$c30_dob)
 df.vax$start2 <- as.Date(df.vax$c30_dob) %m+% weeks(8)
 df.vax$start3 <- as.Date(df.vax$c30_dob) %m+% weeks(12)
@@ -338,6 +342,7 @@ df.vax$stop2 <- as.Date(df.vax$c30_dob) %m+% weeks(12) %m-% days(1)
 df.vax$stop3 <- as.Date(df.vax$c30_dob) %m+% weeks(32) %m-% days(1)
 df.vax$stop4 <- as.Date(df.vax$c30_dob) %m+% months(13)
 
+### Assigning start and stop date for each child based on vaccination group
 df.vax$vax_start <- ifelse(df.vax$vaxgroup == "<8w", as.character(df.vax$start1), 
                            ifelse(df.vax$vaxgroup == "8-12w", as.character(df.vax$start2),
                                   ifelse(df.vax$vaxgroup == "12-32w", as.character(df.vax$start3),
@@ -348,8 +353,11 @@ df.vax$vax_stop <- ifelse(df.vax$vaxgroup == "<8w", as.character(df.vax$stop1),
                                   ifelse(df.vax$vaxgroup == "12-32w", as.character(df.vax$stop3),
                                          ifelse(df.vax$vaxgroup == ">32w", as.character(df.vax$stop4), NA))))
 
+###  
 df.vax2 <- df.vax %>% 
+  # Keeping if c42_date is between start and stop date
   dplyr::filter(as.Date(c42_date) >= as.Date(vax_start) & as.Date(c42_date) <= as.Date(vax_stop)) %>% 
+  # (exclude India site as no PCV): Assigning all 3 doses of PCV for India and recoding missing values
   dplyr::mutate(c42_pneumo_time = ifelse(irc == "India", 3, c42_pneumo_time),
                 c42_pneumo_time = ifelse(c42_pneumo_time == 888, NA, c42_pneumo_time),
                 c42_penta_time = ifelse(c42_penta_time == 888, NA, c42_penta_time),
@@ -358,6 +366,7 @@ df.vax2 <- df.vax %>%
   dplyr::distinct()
 
 
+# Generating Vaccination variable 
 df.vax2$vax_u2d <- ifelse(df.vax2$vaxgroup == "<8w" & df.vax2$c42_pneumo_time >= 1 & df.vax2$c42_penta_time >=1, 1,
                          ifelse(df.vax2$vaxgroup == "8-12w" & df.vax2$c42_pneumo_time >= 2 & df.vax2$c42_penta_time >=2, 1,
                                 ifelse(df.vax2$vaxgroup == "12-32w" & df.vax2$c42_pneumo_time >= 3 & df.vax2$c42_penta_time >=3, 1,
@@ -366,14 +375,17 @@ df.vax2$vax_u2d <- ifelse(df.vax2$vaxgroup == "<8w" & df.vax2$c42_pneumo_time >=
                                                 df.vax2$c42_penta_time >= 3 &
                                                 df.vax2$c42_measles_time >= 1, 1, 0))))
 
+# Keeping one record per HHID
 df.vax2 <- df.vax2 %>% 
   group_by(hhid) %>% 
   arrange(vax_u2d) %>% 
   dplyr::distinct(hhid, .keep_all = TRUE)
 
+# Generating vaccination dataset for Table-3
 df.vax3 <- df.vax %>% 
   dplyr::right_join(df.p, by = "hhid") %>% 
   dplyr::filter(Pneumonia == 1) %>% 
+  # Keeping if pneumonia case date is later than the vaccination date and c42_Date is before vaccination stop date
   dplyr::filter(as.Date(Visit_date_cal) >= as.Date(vax_start) & as.Date(c42_date) <= as.Date(vax_stop)) %>% 
   dplyr::select(hhid, Visit_date_cal, c42_date, vaxgroup, vax_start, vax_stop, c42_pneumo_time, c42_penta_time, c42_measles_time) 
   
