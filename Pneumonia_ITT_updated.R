@@ -62,6 +62,10 @@ df.tomerge <- df.nf %>%
 df.exit <- df.exit %>% 
   dplyr::left_join(df.tomerge, by = "hhid_blinded")
 
+### Saving for stunting analysis
+# write.csv(df.exit, "/Users/shakir777/Dropbox/HAPIN/Stunting/Data/df.exit.csv")
+
+
 # If child died, then date of death is the exit date:
 df.nf$e3_date_exit_c <- ifelse(!is.na(df.nf$e2_death_date), df.nf$e2_death_date, df.nf$e3_date_exit_c)
 
@@ -1129,7 +1133,7 @@ dfy <- df.nf %>%
   fill(c30_dob) %>% 
   dplyr::ungroup() %>% 
   dplyr::mutate(month6 = ymd(c30_dob) %m+% months(6)) %>% 
-  dplyr::filter(as.Date(c33_date) < month6) %>% # Subset the data for 6m of age without considering the visit number
+  dplyr::filter(as.Date(c32_date) < month6) %>% # Subset the data for 6m of age without considering the visit number
   dplyr::arrange(desc(c33_age)) %>% # arrange from older to younger
   dplyr::select(hhid, c30_dob, c33_date, c33_age, month6, timepoint, contains("c32_")) %>%
   dplyr::distinct(hhid, .keep_all = TRUE) # Keep last visit within 6m
@@ -1143,15 +1147,14 @@ foodlist = c("c32_vitamin", "c32_water", "c32_formula", "c32_milk", "c32_juice",
              "c32_bean", "c32_cheese", "c32_oil","c32_sugar", "c32_insect", "c32_palm", "c32_food_other",
              "c32_food", "c32_infant_food", "c32_add", "c32_nutrient", "c32_iron")
 
-
 df.maxfood <- df.nf  %>%
   dplyr::group_by(hhid) %>% 
   dplyr::arrange(hhid, c30_dob) %>% 
   fill(c30_dob) %>% 
   dplyr::ungroup() %>% 
   dplyr::mutate(month6 = ymd(c30_dob) %m+% months(6)) %>% 
-  dplyr::filter(as.Date(c33_date) < month6) %>% # Subset the data for 6m of age without considering the visit number
-  dplyr::select(hhid, c30_dob, c33_date, c33_age, timepoint, contains("c32_"))
+  dplyr::filter(as.Date(c32_date) < month6) %>% # Subset the data for 6m of age without considering the visit number
+  dplyr::select(hhid, c30_dob, c33_date, month6, c33_age, timepoint, contains("c32_"))
 
 for(mm in colnames(df.maxfood)){
   df.maxfood[[mm]] <- ifelse(df.maxfood[[mm]] == 888, NA, df.maxfood[[mm]])
@@ -1178,6 +1181,12 @@ df.tab <- dfy %>%
   dplyr::select(hhid, ebf) %>%
   dplyr::right_join(df.tab, by = "hhid")
 
+
+df.ebfx <- read_excel(file.choose())
+df.ebfx$hhid <- as.numeric(df.ebfx$hhid)
+dfz <- full_join(dfy, df.ebfx, by = "hhid")
+#dfz$ebf_Shakir <- ifelse(as.numeric(dfz$ebf_Shakir), 0, dfz$ebf_Shakir)
+table(dfz$ebf, dfz$ebf_Shakir, useNA = "ifany")
 
 ##############
 ##   SES   ###
